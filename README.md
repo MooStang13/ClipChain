@@ -27,13 +27,3 @@ Progress saves in your browser's local storage and only advances while the page 
 
 Open `index.html` in a browser. Fonts load from Google Fonts and fall back to system fonts if offline.
 
-## Host it on GitHub Pages
-
-1. Put `index.html`, `README.md` and `.nojekyll` in the root of a repository.
-2. Repository Settings, Pages, Source: deploy from branch `main`, folder `/ (root)`.
-3. The game appears at `https://<user>.github.io/<repo>/`.
-
-## Notes
-
-- Game logic and UI live in two inline `<script>` blocks in `index.html`. The first, `CORE`, is pure logic with no DOM.
-- Save key: `clipchain.save.v1`. Older saves are upgraded automatically on load.
