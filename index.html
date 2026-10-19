@@ -1,0 +1,1825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clip Chain</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Layout: one HUD strip, a log-scale ruler, then bench + shop above, factory floor + wall of frames below. */
+:root {
+  --bg: #0a0c22;
+  --panel: #12153a;
+  --panel-2: #1a1e4c;
+  --line: #2b3072;
+  --fg: #e9ecff;
+  --dim: #8f96ca;
+  --cyan: #35e0ff;
+  --amber: #ffb02e;
+  --lime: #7cf29a;
+  --pink: #ff6bd6;
+  --red: #ff4d6d;
+  --gold: #ffd60a;
+  --steel: #d6dff0;
+  --display: 'Silkscreen', 'Courier New', monospace;
+  --body: 'Chakra Petch', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); }
+body {
+  margin: 0; color: var(--fg); font: 500 15px/1.4 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 48px;
+  background-image: radial-gradient(1200px 500px at 50% -120px, #1a1f5c 0%, transparent 70%);
+  background-repeat: no-repeat;
+}
+.wrap { max-width: 1400px; margin: 0 auto; display: grid; gap: 12px; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* TOP BAR */
+.topbar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.brand { font: 700 19px/1 var(--display); letter-spacing: .06em; display: grid; gap: 6px; padding-right: 6px; }
+.brand small { font: 400 9px/1 var(--display); color: var(--dim); letter-spacing: .16em; }
+.brand b { background: linear-gradient(90deg, #ff4d6d, #ff9f1c, #ffd60a, #7cf29a, #35e0ff, #c77dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+.stat { padding: 9px 16px 10px; min-width: 0; border-left: 1px solid var(--line); }
+.stat:first-child { border-left: 0; }
+.stat .k { font: 400 9px/1 var(--display); letter-spacing: .16em; color: var(--dim); text-transform: uppercase; }
+.stat .v { font: 700 21px/1.15 var(--body); font-variant-numeric: tabular-nums; margin-top: 5px; overflow-wrap: anywhere; }
+.stat .s { font-size: 12px; line-height: 1.3; color: var(--dim); font-variant-numeric: tabular-nums; }
+.stat.cash .v { color: var(--lime); }
+.bar { height: 5px; background: #0b0e30; border-radius: 2px; margin-top: 7px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--cyan); }
+.tools { display: flex; gap: 6px; }
+.mini { font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--dim); background: transparent; border: 1px solid var(--line); border-radius: 3px; padding: 8px 11px; cursor: pointer; }
+.mini:hover { color: var(--fg); border-color: var(--dim); }
+
+/* length banner */
+.length { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 14px 18px 8px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 36px; }
+.len-main, .len-prog { min-width: 0; display: grid; gap: 7px; align-content: start; }
+.len-main { grid-template-columns: auto minmax(0, 1fr); align-items: end; column-gap: 20px; }
+.len-main .k, .len-prog .k { grid-column: 1 / -1; font: 400 9px/1 var(--display); letter-spacing: .16em; color: var(--dim); text-transform: uppercase; }
+.len-big { font: 700 clamp(30px, 4.2vw, 46px)/1 var(--display); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.len-cmp { font-size: 17px; color: var(--steel); min-width: 0; padding-bottom: 4px; }
+.len-wt { grid-column: 1 / -1; font-size: 14px; color: var(--dim); min-width: 0; }
+.len-wt b { color: var(--fg); font-weight: 600; }
+.len-next { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--dim); }
+.len-next b { color: var(--fg); font-weight: 600; }
+.bricks { display: grid; grid-template-columns: repeat(32, minmax(0, 1fr)); gap: 3px; --c: var(--cyan); }
+.bricks i { height: 13px; background: #1b2062; border-radius: 2px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
+.bricks i.on { background: var(--c); box-shadow: inset 0 -3px 0 rgba(0,0,0,.28), inset 0 2px 0 rgba(255,255,255,.35), 0 0 8px color-mix(in srgb, var(--c) 55%, transparent); }
+.ruler-wrap { position: relative; grid-column: 1 / -1; border-top: 1px solid var(--line); margin-top: 6px; }
+#ruler { width: 100%; height: auto; display: block; }
+.tip { position: absolute; pointer-events: none; transform: translate(-50%, -100%); background: #000c; border: 1px solid var(--line); padding: 3px 8px; font-size: 12px; border-radius: 3px; white-space: nowrap; opacity: 0; transition: opacity .1s; }
+
+/* panels */
+.grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); gap: 12px; align-items: stretch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 14px; height: 38px; flex: none; background: #0f1236; border-bottom: 1px solid var(--line); font: 400 10px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.panel-head b { color: var(--fg); font-weight: 400; }
+.panel-head span { font-variant-numeric: tabular-nums; }
+canvas { display: block; width: 100%; height: auto; }
+#bench { touch-action: none; cursor: default; }
+.bench-foot { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); background: #0f1236; min-height: 50px; }
+.led { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 8px var(--lime); }
+.hint { flex: 1; min-width: 0; color: var(--steel); font-size: 14px; line-height: 1.35; }
+.hint em { font-style: normal; color: var(--cyan); font-weight: 600; }
+.shop-panel { contain: size; min-height: 420px; }
+.shop-panel .shop-list { flex: 1; min-height: 0; }
+
+/* bricks as buttons */
+.btn {
+  --c: var(--cyan);
+  font: 700 13px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; color: #080a22; background: var(--c);
+  border: 0; border-radius: 3px; padding: 11px 14px; cursor: pointer; white-space: nowrap;
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,.28), inset 0 2px 0 rgba(255,255,255,.38), 0 0 0 2px rgba(0,0,0,.4);
+}
+.btn:hover:not(:disabled) { filter: brightness(1.12); }
+.btn:active:not(:disabled) { transform: translateY(2px); }
+.btn:disabled { background: #272c5e; color: #7b82b6; box-shadow: inset 0 -4px 0 rgba(0,0,0,.22), 0 0 0 2px rgba(0,0,0,.3); cursor: not-allowed; }
+.btn.big { padding: 14px 20px; font-size: 15px; }
+.btn.lime { --c: var(--lime); } .btn.amber { --c: var(--amber); } .btn.pink { --c: var(--pink); } .btn.gold { --c: var(--gold); }
+.btn.ghost { background: transparent; color: var(--fg); box-shadow: inset 0 0 0 2px var(--line); }
+
+/* shop */
+.tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); flex: none; background: #0f1236; }
+.tab { position: relative; background: transparent; color: var(--dim); border: 0; border-right: 1px solid var(--line); flex: 1 1 24%; padding: 0 4px; height: 36px; border-bottom: 1px solid var(--line); font: 400 10px/1.1 var(--display); letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+.tab:last-child { border-right: 0; }
+.tab[data-badge="2"]::after { content: ''; position: absolute; top: 6px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 8px var(--red); }
+.tab[aria-selected="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 -3px 0 var(--cyan); }
+.tab[data-badge="1"]::after { content: ''; position: absolute; top: 6px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 8px var(--lime); }
+.shop-list { display: grid; gap: 10px; padding: 12px; overflow-y: auto; align-content: start; }
+.note { color: var(--dim); font-size: 13px; line-height: 1.45; }
+.note b { color: var(--fg); font-weight: 600; }
+.card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; }
+.card.locked { opacity: .55; }
+.c-title { font: 700 15px/1.2 var(--body); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.c-title .n { font: 400 11px var(--display); color: var(--gold); }
+.c-desc { font-size: 13px; color: var(--dim); grid-column: 1; }
+.c-meta { font-size: 12px; color: var(--cyan); grid-column: 1; font-variant-numeric: tabular-nums; }
+.card .btn { grid-column: 2; grid-row: 1 / span 3; align-self: center; min-width: 96px; }
+.qty { display: flex; gap: 6px; }
+.qty .mini[aria-pressed="true"] { color: #080a22; background: var(--cyan); border-color: var(--cyan); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 12px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 3px; color: var(--steel); }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.kv span:nth-child(odd) { color: var(--dim); }
+.kv span:nth-child(even) { text-align: right; }
+.good { color: var(--lime); font-weight: 600; } .bad { color: var(--red); font-weight: 600; } .warn { color: var(--amber); font-weight: 600; }
+.spark { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 3px; display: block; }
+.card.run { grid-template-columns: minmax(0, 1fr); }
+.bar.wide { height: 8px; margin-top: 6px; }
+.bar.wide i { background: var(--lime); }
+
+/* second row */
+.wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; padding: 12px; overflow-y: auto; align-content: start; }
+.frame { position: relative; display: grid; gap: 4px; padding: 6px; border-radius: 3px; text-align: center; background: #0d1038; border: 2px dashed #2a3070; color: var(--dim); font: inherit; cursor: default; }
+.frame .mat { background: #0a0d2e; border-radius: 2px; padding: 6px 4px; }
+.frame svg { width: 100%; height: auto; display: block; }
+.frame .nm { font: 600 11px/1.15 var(--body); color: var(--steel); }
+.frame .ln { font: 400 9px/1.2 var(--display); letter-spacing: .06em; color: var(--dim); }
+.frame.done { border: 4px solid #c8a24a; background: #14173f; box-shadow: inset 0 0 0 2px #7a5f1f, 0 0 0 1px #000, 0 6px 14px #0008; }
+.frame.pend { border: 2px solid var(--gold); background: #1b1f4f; cursor: pointer; animation: pulse 1.2s ease-in-out infinite; }
+.frame.pend .ln { color: var(--gold); }
+.frame.pop { animation: pop .7s ease-out; }
+@keyframes pulse { 50% { box-shadow: 0 0 14px 2px #ffd60a66; } }
+@keyframes pop { 0% { transform: scale(.7); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+/* toasts */
+.toasts { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 50%; transform: translateX(-50%); display: grid; gap: 8px; z-index: 20; width: min(560px, calc(100vw - 32px)); pointer-events: none; }
+.toast { --c: var(--gold); pointer-events: auto; background: #0b0e32; border: 3px solid var(--c); border-radius: 3px; padding: 10px 14px; box-shadow: 0 0 22px color-mix(in srgb, var(--c) 40%, transparent), 0 8px 20px #000a; animation: drop .35s ease-out; }
+.toast .t1 { font: 400 11px/1 var(--display); letter-spacing: .14em; color: var(--c); text-transform: uppercase; }
+.toast .t2 { margin-top: 5px; font-size: 15px; }
+.toast .btn { margin-top: 8px; padding: 8px 12px; }
+@keyframes drop { from { transform: translateY(-14px); opacity: 0; } }
+
+.foot { color: var(--dim); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* statistics */
+.sbody { padding: 14px; display: grid; gap: 16px; }
+.shero { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.hero { background: #0f1236; border: 1px solid var(--line); border-radius: 3px; padding: 10px 12px; min-width: 0; }
+.hero .k { font: 400 9px/1 var(--display); letter-spacing: .16em; color: var(--dim); text-transform: uppercase; }
+.hero .v { font: 700 clamp(18px, 2vw, 26px)/1.1 var(--display); margin: 9px 0 6px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.hero .s { font-size: 12px; color: var(--steel); }
+.sgroups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 26px; }
+.sgroup h3 { margin: 0 0 9px; font: 400 9px/1 var(--display); letter-spacing: .16em; color: var(--cyan); text-transform: uppercase; }
+.sgroup .kv span:nth-child(even) { color: var(--fg); }
+
+@media (max-width: 1020px) {
+  .shero, .sgroups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .topbar { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat:nth-child(3) { border-left: 0; }
+  .stat:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .length { grid-template-columns: minmax(0, 1fr); }
+  .shop-panel { contain: none; min-height: 0; }
+  .shop-list { max-height: none; }
+}
+@media (max-width: 560px) { .sgroups { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .frame.pend, .frame.pop, .toast { animation: none; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="topbar" aria-label="Status">
+    <div class="brand"><b>CLIP CHAIN</b><small>REAL LENGTHS ONLY</small></div>
+    <div class="stats">
+      <div class="stat cash"><div class="k">Cash</div><div class="v" id="hCash">£0</div><div class="s" id="hCashS">&nbsp;</div></div>
+      <div class="stat"><div class="k">Clips linked</div><div class="v" id="hClips">0</div><div class="s" id="hRate">by hand</div></div>
+      <div class="stat"><div class="k">Wire on the spool</div><div class="v" id="hWire">0 m</div><div class="bar"><i id="hWireBar"></i></div><div class="s" id="hWireS">&nbsp;</div></div>
+      <div class="stat"><div class="k">Gallery income</div><div class="v" id="hInc">closed</div><div class="s" id="hIncS">&nbsp;</div></div>
+    </div>
+    <div class="tools">
+      <button class="mini" id="bMute" type="button">Sound on</button>
+      <button class="mini" id="bReset" type="button">Start over</button>
+    </div>
+  </header>
+
+  <section class="length" aria-live="off">
+    <div class="len-main"><div class="k">Chain length</div><div class="len-big" id="lLen">0 mm</div><div class="len-cmp" id="lCmp">Nothing yet</div><div class="len-wt" id="lWt"></div></div>
+    <div class="len-prog"><div class="k">Next milestone</div>
+      <div class="len-next"><span><b id="lNext">a pencil</b></span><span id="lLeft"></span></div>
+      <div class="bricks" id="bricks"></div>
+    </div>
+    <div class="ruler-wrap"><canvas id="ruler"></canvas><div class="tip" id="rTip"></div></div>
+  </section>
+
+  <div class="grid">
+    <section class="panel" aria-label="Workbench">
+      <div class="panel-head"><b>Workbench</b><span id="bBends">Hand-bent clips 0</span></div>
+      <canvas id="bench" aria-label="Bending bench. Click the scissors to cut wire, then drag the glowing ring round each peg."></canvas>
+      <div class="bench-foot"><i class="led" aria-hidden="true"></i><div class="hint" id="bHint">Click the scissors to cut a length of wire.</div></div>
+    </section>
+
+    <aside class="panel shop-panel" aria-label="Shop">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="shop-list" id="shop" role="tabpanel"></div>
+    </aside>
+  </div>
+
+  <section class="panel" aria-label="Factory floor">
+    <div class="panel-head"><b>Factory floor</b><span id="fInfo">just you</span></div>
+    <canvas id="factory"></canvas>
+  </section>
+
+  <section class="panel" aria-label="Statistics">
+    <div class="panel-head"><b>Statistics</b><span id="sInfo"></span></div>
+    <div class="sbody" id="statBody"></div>
+  </section>
+
+  <section class="panel wall-panel" aria-label="Wall of frames">
+    <div class="panel-head"><b>Wall of frames</b><span id="wInfo">0 / 0</span></div>
+    <div class="wall" id="wall"></div>
+  </section>
+
+  <div class="foot"><span>One clip adds 33 mm, weighs about 0.66 g and uses 10.7 cm of 1 mm steel wire. Progress saves in this browser while you play.</span><span id="fPlay"></span></div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+/* ===== CLIP CHAIN core: pure game logic, no DOM ===== */
+const CORE = (() => {
+'use strict';
+const PI = Math.PI;
+const CLIP_LEN = 0.033;               // metres of chain per clip (a gem clip is 33 mm long)
+
+/* ---- clip geometry, millimetres. Three right-hand U-turns, four straight legs ---- */
+const GEO = { r: [4.5, 3.2, 2.0], l: [17, 25.3, 21.8, 12] };
+const WIRE_MM = GEO.l.reduce((a, b) => a + b, 0) + PI * GEO.r.reduce((a, b) => a + b, 0);
+const WIRE = WIRE_MM / 1000;          // metres of wire in one clip (about 10.7 cm)
+const WIRE_D = 0.001, STEEL = 7850;   // 1.0 mm wire, steel at 7850 kg per cubic metre
+const CLIP_KG = WIRE * PI * Math.pow(WIRE_D / 2, 2) * STEEL;  // about 0.66 g per clip
+const S_START = [];                    // arc length where each bend begins
+(() => { let s = GEO.l[0]; for (let i = 0; i < 3; i++) { S_START.push(s); s += PI * GEO.r[i] + GEO.l[i + 1]; } })();
+const DS = 0.25;
+
+/* seedable random (the game uses Math.random; the balance sim seeds it) */
+let _rs = null;
+function seed(n) { _rs = n | 0; }
+function rnd() {
+  if (_rs === null) return Math.random();
+  _rs = (_rs + 0x6D2B79F5) | 0; let t = Math.imul(_rs ^ (_rs >>> 15), 1 | _rs);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+/* Shape of the wire for bend fractions fs=[f1,f2,f3] (0..1 each), in a frame where
+   peg 1 is fixed at (S_START[0], -r1) and the long part of the wire lies on y=0. */
+function shape(fs) {
+  const n = Math.ceil(WIRE_MM / DS);
+  const xs = new Float64Array(n + 1), ys = new Float64Array(n + 1);
+  const phi = (s) => {
+    let a = 0;
+    for (let i = 0; i < 3; i++) {
+      const t = (s - S_START[i]) / GEO.r[i];
+      a += Math.max(0, Math.min(t, fs[i] * PI));
+    }
+    return -a;
+  };
+  let x = 0, y = 0;
+  for (let k = 0; k < n; k++) {
+    const s0 = k * DS, s1 = Math.min(WIRE_MM, (k + 1) * DS);
+    const h = phi((s0 + s1) / 2), d = s1 - s0;
+    xs[k] = x; ys[k] = y;
+    x += Math.cos(h) * d; y += Math.sin(h) * d;
+  }
+  xs[n] = x; ys[n] = y;
+  const th = fs[0] * PI, c = Math.cos(th), sn = Math.sin(th);
+  const cx = S_START[0], cy = -GEO.r[0];
+  const tx = cx - (cx * c - cy * sn), ty = cy - (cx * sn + cy * c);
+  for (let k = 0; k <= n; k++) {
+    const px = xs[k], py = ys[k];
+    xs[k] = px * c - py * sn + tx;
+    ys[k] = px * sn + py * c + ty;
+  }
+  return { xs, ys, n };
+}
+function ptAt(sh, s) { const k = Math.max(0, Math.min(sh.n, Math.round(s / DS))); return [sh.xs[k], sh.ys[k]]; }
+/* centre of peg i (0..2), with earlier bends complete */
+function pegCentre(i) {
+  if (i === 0) return [S_START[0], -GEO.r[0]];
+  const fs = [1, i > 1 ? 1 : 0, 0];
+  const sh = shape(fs);
+  const k = Math.round(S_START[i] / DS);
+  const px = sh.xs[k], py = sh.ys[k];
+  let dx = sh.xs[k + 1] - sh.xs[k - 1], dy = sh.ys[k + 1] - sh.ys[k - 1];
+  const L = Math.hypot(dx, dy); dx /= L; dy /= L;
+  return [px + GEO.r[i] * dy, py - GEO.r[i] * dx];
+}
+/* arc length of the point the player grabs for bend i */
+function handleS(i) { return i === 0 ? 5 : S_START[i] + PI * GEO.r[i] + (i === 1 ? 16 : 9); }
+
+/* ---- progression data ---- */
+const PALETTE = ['#ff4d6d', '#ff9f1c', '#ffd60a', '#7cf29a', '#2ee6d6', '#4cc9ff', '#7b8cff', '#c77dff', '#ff6bd6'];
+const MS_RAW = [
+  ['pencil', 'Pencil', 'a pencil', 0.19],
+  ['guitar', 'Guitar', 'a guitar', 1.0],
+  ['adult', 'Tall adult', 'a tall adult', 1.8],
+  ['car', 'Family car', 'a family car', 4.5],
+  ['giraffe', 'Giraffe', 'a giraffe', 5.5],
+  ['bus', 'Double-decker', 'a double-decker bus', 11],
+  ['whale', 'Blue whale', 'a blue whale', 25],
+  ['bigben', 'Big Ben', 'Big Ben', 96],
+  ['pitch', 'Football pitch', 'a football pitch', 105],
+  ['eiffel', 'Eiffel Tower', 'the Eiffel Tower', 330],
+  ['burj', 'Burj Khalifa', 'the Burj Khalifa', 828],
+  ['nevis', 'Ben Nevis', 'Ben Nevis', 1345],
+  ['everest', 'Mount Everest', 'Mount Everest', 8849],
+  ['cruise', 'Airliner height', 'an airliner at cruising height', 10670],
+  ['channel', 'Dover to Calais', 'Dover to Calais', 33800],
+  ['marathon', 'Marathon', 'a marathon', 42195],
+  ['karman', 'Edge of space', 'the edge of space', 100000],
+  ['iss', 'Space station', 'the space station’s orbit', 408000],
+  ['uk', 'Land’s End to John o’ Groats', 'Land’s End to John o’ Groats', 1407000],
+  ['ny', 'London to New York', 'London to New York', 5570000],
+  ['wall', 'Great Wall of China', 'the Great Wall of China', 21196000],
+  ['geo', 'Geostationary orbit', 'geostationary orbit', 35786000],
+  ['earth', 'Round the Earth', 'all the way round the Earth', 40075000],
+  ['moon', 'The Moon', 'the Moon', 384400000],
+  ['venus', 'Venus', 'Venus at its closest', 4.14e10],
+  ['mars', 'Mars', 'Mars at its closest', 5.46e10],
+  ['sun', 'The Sun', 'the Sun', 1.496e11],
+  ['jupiter', 'Jupiter', 'Jupiter at its closest', 5.88e11],
+  ['saturn', 'Saturn', 'Saturn at its closest', 1.2e12],
+  ['neptune', 'Neptune', 'Neptune at its closest', 4.3e12],
+  ['voyager', 'Voyager 1', 'where Voyager 1 is now', 2.5e13],
+  ['oort', 'Oort cloud', 'the inner edge of the Oort cloud', 3.0e14],
+  ['proxima', 'Proxima Centauri', 'Proxima Centauri, our nearest star', 4.0e16],
+  ['sirius', 'Sirius', 'Sirius, the brightest star in the sky', 8.14e16],
+  ['milky', 'Across the Milky Way', 'right across the Milky Way', 9.4607e20],
+  ['andromeda', 'Andromeda', 'the Andromeda galaxy', 2.4e22],
+];
+const MS_REWARD = (clips) => Math.round(clips * 0.55 + 8);
+const MILESTONES = MS_RAW.map((m, i) => {
+  const clips = Math.ceil(m[3] / CLIP_LEN);
+  return { id: m[0], short: m[1], name: m[2], len: m[3], clips, col: PALETTE[i % PALETTE.length], reward: MS_REWARD(clips) };
+});
+
+const BIN = 8;                         // blank bin size
+const BLANK_RATE = [0.25, 0.45];        // blanks/s from the first and second hire
+const HIRES = [
+  { name: 'First-bend hand', desc: 'Cuts the wire and does bend 1. You finish bends 2 and 3.', cost: 25 },
+  { name: 'Second-bend hand', desc: 'Blanks arrive with two bends done. You only do bend 3.', cost: 110 },
+  { name: 'Third-bend hand', desc: 'Whole clips, no help needed. Your bench is for fun now.', cost: 360 },
+];
+const BENCH_RATE = 1;                  // clips/s once all three hands are hired
+
+const GENS = [
+  { name: 'Bending machine', desc: 'A motor does the bends.', rate: 2, cost: 200 },
+  { name: 'Auto-feed line', desc: 'Wire unspools by itself.', rate: 14, cost: 4000 },
+  { name: 'Multi-station press', desc: 'Cut, bend and link in one pass.', rate: 100, cost: 36000 },
+  { name: 'Clip mill', desc: 'A hall of presses with its own forklift.', rate: 700, cost: 330000 },
+  { name: 'Production hall', desc: 'Shifts, supervisors, and a tea trolley.', rate: 5000, cost: 3.1e6 },
+  { name: 'Paperclip plant', desc: 'Wire arrives by the lorry load.', rate: 36000, cost: 2.9e7 },
+  { name: 'Automated factory', desc: 'The lights are off. Nobody minds.', rate: 260000, cost: 2.6e8 },
+  { name: 'Robot gigafactory', desc: 'Fleets of arms, one purpose.', rate: 1.9e6, cost: 2.4e9 },
+  { name: 'Continental works', desc: 'Its own railway, its own weather.', rate: 1.4e7, cost: 2.2e10 },
+  { name: 'Orbital foundry', desc: 'Zero-g wire drawing. The chain starts to leave Earth.', rate: 1e8, cost: 2e11 },
+];
+GENS.push(
+  { name: 'Lunar foundry', desc: 'Wire drawn from moon rock.', rate: 7.2e8, cost: 1.8e12 },
+  { name: 'Asteroid belt mill', desc: 'A rock in, a thousand kilometres of wire out.', rate: 5.2e9, cost: 1.6e13 },
+  { name: 'Dyson swarm segment', desc: 'A slice of a star, working for you.', rate: 3.7e10, cost: 1.5e14 },
+  { name: 'Stellar forge', desc: 'Neutron-star presses. Mind the gap.', rate: 2.7e11, cost: 1.3e15 },
+  { name: 'Wire-spinning star', desc: 'The whole star is a spool now.', rate: 1.9e12, cost: 1.2e16 },
+  { name: 'Galactic works', desc: 'Ten thousand systems, one product.', rate: 1.4e13, cost: 1.1e17 },
+);
+const GEN_PW = [1, 5, 30, 200, 1.4e3, 1e4, 7e4, 5e5, 3.5e6, 2.5e7, 1.8e8, 1.3e9, 9e9, 6.5e10, 4.5e11, 3.2e12];   // kW drawn by one machine
+const GEN_SP = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];                 // floor bays taken by one machine
+GENS.forEach((g, i) => { g.pw = GEN_PW[i]; g.sp = GEN_SP[i]; });
+const GROW = 1.15;
+
+/* ---- site: power supply, floor space, wire warehouse ---- */
+const PW = [
+  { name: 'Workshop socket', cap: 5, cost: 0, desc: 'One ring main and a kettle.' },
+  { name: 'Three-phase supply', cap: 25, cost: 120, desc: 'The electrician says you will need this.' },
+  { name: 'Industrial feed', cap: 120, cost: 1100, desc: 'A proper cable from the road.' },
+  { name: 'Substation', cap: 600, cost: 1e4, desc: 'Your own humming box in the yard.' },
+  { name: 'Gas turbine', cap: 3000, cost: 9e4, desc: 'Loud, but it is yours.' },
+  { name: 'Grid connection', cap: 15000, cost: 8e5, desc: 'Pylons, and a letter from the council.' },
+  { name: 'Wind and solar farm', cap: 75000, cost: 7e6, desc: 'The hills are covered in it.' },
+  { name: 'Power station', cap: 4e5, cost: 6.5e7, desc: 'Cooling towers with your name on.' },
+  { name: 'Nuclear plant', cap: 2e6, cost: 6e8, desc: 'Staffed by people who like quiet.' },
+  { name: 'Fusion reactor', cap: 1e7, cost: 5.5e9, desc: 'Always twenty years away, until now.' },
+  { name: 'Orbital solar array', cap: 6e7, cost: 5e10, desc: 'Sunlight with no night shift.' },
+];
+const FL = [
+  { name: 'Garage', cap: 8, cost: 0, desc: 'Cars have not fitted in here for years.' },
+  { name: 'Lock-up unit', cap: 18, cost: 80, desc: 'A roller door and a padlock.' },
+  { name: 'Workshop', cap: 40, cost: 800, desc: 'Proper benches, proper floor.' },
+  { name: 'Small factory unit', cap: 90, cost: 8000, desc: 'With a loading bay.' },
+  { name: 'Industrial unit', cap: 200, cost: 8e4, desc: 'Gantry crane included.' },
+  { name: 'Warehouse hall', cap: 450, cost: 8e5, desc: 'You can lose a lorry in here.' },
+  { name: 'Factory campus', cap: 1000, cost: 8e6, desc: 'Buildings with letters on them.' },
+  { name: 'Industrial estate', cap: 2300, cost: 8e7, desc: 'It has its own bus route.' },
+  { name: 'Industrial town', cap: 5200, cost: 8e8, desc: 'A postcode of its own.' },
+  { name: 'Region-wide works', cap: 12000, cost: 8e9, desc: 'Cows live in the gaps.' },
+];
+const WH = [
+  { name: 'Back room', mult: 2, cost: 0, desc: 'Room for two spools.' },
+  { name: 'Storeroom', mult: 4, cost: 200, desc: 'Shelving, and a ladder.' },
+  { name: 'Stockroom', mult: 8, cost: 2500, desc: 'A forklift that nearly works.' },
+  { name: 'Wire store', mult: 16, cost: 3e4, desc: 'Racked and labelled.' },
+  { name: 'Wire depot', mult: 32, cost: 4e5, desc: 'Its own weighbridge.' },
+  { name: 'Wire silo', mult: 64, cost: 5e6, desc: 'You could lose a lorry in here, too.' },
+];
+PW.push(
+  { name: 'Lunar solar field', cap: 3.6e8, cost: 4.5e11, desc: 'Panels in the dust, no weather.' },
+  { name: 'Dyson fragment', cap: 2.2e9, cost: 4e12, desc: 'A small piece of a star on a long cable.' },
+  { name: 'Dyson ring', cap: 1.3e10, cost: 3.6e13, desc: 'The ring is mostly finished.' },
+  { name: 'Dyson swarm', cap: 8e10, cost: 3.2e14, desc: 'A million mirrors, one purpose.' },
+  { name: 'Stellar tap', cap: 5e11, cost: 2.9e15, desc: 'A hose into the corona.' },
+  { name: 'Star lifter', cap: 3e12, cost: 2.6e16, desc: 'The star is now a utility.' },
+  { name: 'Galactic grid', cap: 2e13, cost: 2.4e17, desc: 'Billions of suns on one meter.' },
+);
+FL.push(
+  { name: 'Planetary works', cap: 28000, cost: 8e10, desc: 'Weather you can ignore.' },
+  { name: 'Continental complex', cap: 65000, cost: 8e11, desc: 'Time zones inside the fence.' },
+  { name: 'Orbital ring', cap: 150000, cost: 8e12, desc: 'Floor space with no floor.' },
+  { name: 'Moon-wide works', cap: 3.4e5, cost: 8e13, desc: 'The far side is all presses.' },
+  { name: 'Asteroid belt estate', cap: 8e5, cost: 8e14, desc: 'Plenty of room, and no neighbours.' },
+  { name: 'Swarm habitats', cap: 1.8e6, cost: 8e15, desc: 'Cities that make clips.' },
+  { name: 'Stellar shell', cap: 4.2e6, cost: 8e16, desc: 'Inside surface, one star.' },
+  { name: 'Galactic estate', cap: 1e7, cost: 8e17, desc: 'There is always more floor.' },
+);
+const RULES = [
+  { name: 'Any price', max: Infinity, desc: 'Restock whenever wire runs low.' },
+  { name: 'Fair price', max: 1.2, desc: 'Only restock at up to ×1.2. Above that the line limps along on rush orders.' },
+  { name: 'Cheap only', max: 0.85, desc: 'Restock at ×0.85 or less, and fill the warehouse while it is cheap. Above that the line limps along.' },
+];
+WH.push(
+  { name: 'Wire canyon', mult: 128, cost: 6e7, desc: 'A valley, lined and sealed.' },
+  { name: 'Wire quarry', mult: 256, cost: 7e8, desc: 'Dug out for the purpose.' },
+  { name: 'Wire reservoir', mult: 512, cost: 8e9, desc: 'Wire, pooled.' },
+  { name: 'Wire mountain', mult: 1024, cost: 9e10, desc: 'It has weather.' },
+  { name: 'Orbital stockpile', mult: 2048, cost: 1e12, desc: 'Parked in a very slow orbit.' },
+  { name: 'Wire belt', mult: 4096, cost: 1.1e13, desc: 'A second asteroid belt, but it is all wire.' },
+  { name: 'Wire moon', mult: 8192, cost: 1.2e14, desc: 'Moon-sized, still not enough.' },
+  { name: 'Wire world', mult: 16384, cost: 1.3e15, desc: 'A planet of coiled steel.' },
+);
+const RUSH = 1.6, LIMP = 0.3;           // rush-order price, and the fraction of output kept when starved
+const WIRE_K = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1];   // price scaling per spool tier (tuned by the balance sim)
+const OT_LEN = 30, OT_CD = 150, OT_RATE = 1.6, OT_POWER = 1.4;
+
+const SPOOLS = [
+  { size: 15, ppm: 1.0 }, { size: 60, ppm: 0.9 }, { size: 250, ppm: 0.8 },
+  { size: 1000, ppm: 0.72 }, { size: 5000, ppm: 0.65 }, { size: 25000, ppm: 0.6 },
+  { size: 125000, ppm: 0.55 }, { size: 1e6, ppm: 0.5 }, { size: 1e7, ppm: 0.47 },
+  { size: 1e8, ppm: 0.45 },
+];
+for (let k = 0; k < 10; k++) SPOOLS.push({ size: SPOOLS[SPOOLS.length - 1].size * 10, ppm: Math.max(0.3, SPOOLS[SPOOLS.length - 1].ppm * 0.96) });
+const SPOOL_UP_COST = [0, 30, 160, 900, 6000, 5e4, 4.5e5, 4e6, 4e7, 4e8];
+for (let k = 0; k < 10; k++) SPOOL_UP_COST.push(SPOOL_UP_COST[SPOOL_UP_COST.length - 1] * 10);
+while (WIRE_K.length < SPOOLS.length) WIRE_K.push(1);
+const MULTS = [
+  ['Hardened pegs', 'Bends stay crisp at speed.', 1.5, 400],
+  ['Better lighting', 'Fewer dropped clips on the night shift.', 1.5, 6000],
+  ['Lubricated rollers', 'Everything runs smoother.', 2, 6e4],
+  ['Tungsten cutters', 'They never go blunt.', 2, 6e5],
+  ['Servo drives', 'Quicker, quieter, cheaper to run.', 2, 6e6],
+  ['Vision checking', 'A camera sees every bend.', 2, 6e7],
+  ['Laser wire feed', 'The wire barely stops moving.', 2, 6e8],
+  ['Self-scheduling floor', 'Machines book their own repairs.', 3, 7e9],
+  ['Superconducting motors', 'No friction to speak of.', 3, 7e10],
+  ['Compact fusion plant', 'Power stops being a problem.', 3, 7e11],
+  ['Neutron-star bearings', 'Friction is a rumour.', 3, 7e12],
+  ['Von Neumann assemblers', 'The machines build the machines.', 3, 7e13],
+  ['Causal reordering', 'Clips finish before they start.', 3, 7e14],
+  ['Closed timelike loops', 'Yesterday is also making clips.', 3, 7e15],
+  ['Vacuum-energy taps', 'Free power, with paperwork.', 3, 7e16],
+  ['Everything is a clip', 'A philosophical position, in effect.', 3, 7e17],
+].map((m, i) => ({ id: 'm' + (i + 1), name: m[0], desc: m[1], mult: m[2], cost: m[3] }));
+
+const GAL = [
+  { id: 'g0', name: 'Open the Chain Gallery', desc: 'Visitors pay to walk alongside the chain. Income grows with its length.', mult: 1, cost: 60 },
+  { id: 'g1', name: 'Velvet ropes and signs', desc: 'It looks serious now.', mult: 1.5, cost: 400 },
+  { id: 'g2', name: 'Guided tours', desc: 'A person with a flag.', mult: 2, cost: 4000 },
+  { id: 'g3', name: 'Gift shop', desc: 'Clip-shaped everything.', mult: 2, cost: 4e4 },
+  { id: 'g4', name: 'Local TV segment', desc: 'Four minutes, mostly the weather.', mult: 2, cost: 4e5 },
+  { id: 'g5', name: 'World record certificate', desc: 'Adjudicated, framed, laminated.', mult: 2, cost: 4e6 },
+  { id: 'g6', name: 'Documentary', desc: 'Three episodes. The second is slow.', mult: 2, cost: 4e7 },
+  { id: 'g7', name: 'National museum loan', desc: 'The chain gets its own wing.', mult: 2, cost: 4e8 },
+  { id: 'g8', name: 'Space agency partnership', desc: 'Launch day tickets sell out.', mult: 3, cost: 4e9 },
+  { id: 'g9', name: 'Planetarium wing', desc: 'The chain goes all the way round the dome.', mult: 3, cost: 4e11 },
+  { id: 'g10', name: 'Interplanetary tour', desc: 'Tickets to see the chain from Mars.', mult: 3, cost: 4e13 },
+  { id: 'g11', name: 'Alien delegation', desc: 'They paid in something. We counted it as pounds.', mult: 4, cost: 4e15 },
+  { id: 'g12', name: 'Cosmic broadcast', desc: 'The whole sky is watching.', mult: 4, cost: 4e17 },
+];
+const G0 = 0.12, GE = 0.78;            // gallery income = G0 * length^GE * multipliers (per second)
+
+/* ---- state ---- */
+function newState() {
+  return {
+    v: 1, t: 0, clips: 0, cash: 8, wire: SPOOLS[0].size, spool: 0, supplier: false,
+    hires: 0, blanks: 0, blankAcc: 0, gens: GENS.map(() => 0), ups: {},
+    ms: 0, framed: [], pending: [], manual: 0, lastScrounge: -999, muted: false, events: [],
+    mk: { lp: 0, p: 1, ev: 0, evT: 0, kind: '', nextEv: 300, acc: 0, hist: [1] },
+    wh: 0, rule: 0, pw: 0, fl: 0, wspent: 0,
+    ord: { list: [], seq: 0, next: 15 }, ot: { on: 0, cd: 0 },
+    bd: GENS.map(() => 0), bdFix: GENS.map(() => 0), bdT: 240,
+    tp: 0, gb: { broken: 0, need: 0, done: 0, fix: 0, t: 420 },
+    lp: 0, runs: 0, infra: 1,
+    st: { gal: 0, ord: 0, mil: 0, ordN: 0, ordX: 0, jams: 0, snags: 0, peak: 0, kwh: 0 },
+    life: { clips: 0, t: 0 },
+  };
+}
+const has = (S, id) => !!S.ups[id];
+function multAll(S) { let m = 1; for (const u of MULTS) if (has(S, u.id)) m *= u.mult; return m; }
+const LEG_K = 0.08;
+function legMult(S) { return 1 + LEG_K * (S.lp || 0); }
+function rateMult(S) { return multAll(S) * legMult(S); }
+function galMult(S) { let m = 1; for (const u of GAL) if (has(S, u.id)) m *= u.mult; return m; }
+function machRate(S) { let r = 0; for (let i = 0; i < GENS.length; i++) r += S.gens[i] * (1 - (S.bd[i] || 0)) * GENS[i].rate; return r * rateMult(S); }
+function benchRate(S) { return S.hires >= 3 ? BENCH_RATE * rateMult(S) : 0; }
+function genRate(S) { return benchRate(S) + machRate(S); }            // nominal, before brownouts and overtime
+function spaceUsed(S) { let u = 0; for (let i = 0; i < GENS.length; i++) u += S.gens[i] * GENS[i].sp; return u; }
+function spaceCap(S) { return FL[S.fl].cap; }
+function powerDemand(S) { let d = 0; for (let i = 0; i < GENS.length; i++) d += S.gens[i] * GENS[i].pw; return d * (S.ot.on > 0 ? OT_POWER : 1); }
+function powerCap(S) { return PW[S.pw].cap; }
+function powerEff(S) { const d = powerDemand(S), c = powerCap(S); return d <= c ? 1 : c / d; }
+function outRate(S) { return (benchRate(S) + machRate(S) * powerEff(S)) * (S.ot.on > 0 ? OT_RATE : 1); }
+function lengthM(S) { return S.clips * CLIP_LEN; }
+function ticket(S) { return 1 + 0.5 * S.ms; }
+function ticketIdeal(S) { return ticket(S) * Math.pow(galMult(S), 0.4); }   // the price at which the hall is exactly full
+/* The player sets a ticket price. Below the ideal there is a queue and money is left on the table;
+   above it the halls empty faster than the price rises. */
+function galState(S) {
+  if (!has(S, 'g0')) return { open: false, broken: false, income: 0, imax: 0, ideal: 0, p: 0, x: 1, visitors: 0, mood: 'full' };
+  const imax = G0 * Math.pow(Math.max(lengthM(S), 0), GE) * galMult(S) * legMult(S);
+  const ideal = ticketIdeal(S), p = S.tp > 0 ? S.tp : ideal, x = p / ideal;
+  const cap = imax / ideal, g = x <= 1 ? x : Math.pow(x, -1.2), visitors = x <= 1 ? cap : cap * Math.pow(x, -2.2);
+  const broken = !!S.gb.broken;
+  return { open: true, broken, imax, ideal, p, x, g, visitors, income: broken ? 0 : imax * g, mood: x < 0.88 ? 'queue' : x > 1.12 ? 'quiet' : 'full' };
+}
+function galIncome(S) { return galState(S).income; }
+function setTicket(S, p) { if (!has(S, 'g0')) return false; S.tp = Math.max(0.05, p); return true; }
+function spoolSize(S) { return SPOOLS[S.spool].size; }
+function ppm(S) { return SPOOLS[S.spool].ppm * WIRE_K[S.spool] * S.mk.p; }       // pounds per metre right now
+function spoolPrice(S) { return SPOOLS[S.spool].size * ppm(S); }
+function wireCostPerClip(S) { return WIRE * ppm(S); }
+function wireCap(S) { return spoolSize(S) * WH[S.wh].mult; }
+function wireUse(S) { return outRate(S) * WIRE; }                                // metres per second being drawn
+function priceBand(S) { const p = S.mk.p; return p <= 0.85 ? 'cheap' : p <= 1.2 ? 'fair' : 'dear'; }
+
+/* wire handling */
+function restock(S, needM) {                 // the supplier tops up, if the price rule allows it
+  if (S.wire >= needM) return true;
+  if (!S.supplier || S.mk.p > RULES[S.rule].max) return false;
+  const sz = spoolSize(S), price = spoolPrice(S);
+  let n = Math.ceil((needM - S.wire) / sz);
+  n = Math.min(n, Math.floor((wireCap(S) - S.wire) / sz), Math.floor(S.cash / price));
+  if (n > 0) { S.cash -= n * price; S.wspent += n * price; S.wire += n * sz; }
+  return S.wire >= needM;
+}
+function takeWire(S, m) {
+  restock(S, m);
+  if (S.wire >= m) { S.wire -= m; return true; }
+  if (S.supplier && S.mk.p > RULES[S.rule].max) {       // rush order, by the metre
+    const need = m - S.wire, cost = need * ppm(S) * RUSH;
+    if (S.cash >= cost) { S.cash -= cost; S.wspent += cost; S.wire = 0; return true; }
+  }
+  return false;
+}
+function takeWireBulk(S, want) {           // want = clips; returns clips actually covered
+  const need = want * WIRE;
+  restock(S, need);
+  let got = Math.min(want, S.wire / WIRE); S.wire -= got * WIRE;
+  if (got < want && S.supplier && S.mk.p > RULES[S.rule].max) {
+    const allow = Math.max(0, want * LIMP - got), unit = WIRE * ppm(S) * RUSH;
+    const k = Math.min(allow, S.cash / unit);
+    S.cash -= k * unit; S.wspent += k * unit; got += k;
+  }
+  return got;
+}
+function canBuySpool(S) { return S.wire + spoolSize(S) <= wireCap(S) + 1e-9; }
+function buySpool(S) {
+  const price = spoolPrice(S);
+  if (S.cash < price || !canBuySpool(S)) return false;
+  S.cash -= price; S.wspent += price; S.wire += spoolSize(S); return true;
+}
+function fillCost(S) { const sz = spoolSize(S); const n = Math.floor((wireCap(S) - S.wire) / sz + 1e-9); return { n, cost: n * spoolPrice(S) }; }
+function fillWarehouse(S) {
+  const sz = spoolSize(S), price = spoolPrice(S);
+  let n = Math.min(Math.floor((wireCap(S) - S.wire) / sz + 1e-9), Math.floor(S.cash / price));
+  if (n < 1) return 0;
+  S.cash -= n * price; S.wspent += n * price; S.wire += n * sz; return n;
+}
+function scrounge(S) {
+  if (S.t - S.lastScrounge < 20) return false;
+  S.lastScrounge = S.t; S.wire += 2; return true;
+}
+function setRule(S, r) { if (S.supplier && RULES[r]) S.rule = r; }
+
+/* wire market: a slow random drift, plus the odd shortage or glut */
+function marketStep(S) {
+  const mk = S.mk;
+  mk.lp = mk.lp * 0.94 + (rnd() - 0.5) * 0.24;
+  if (mk.evT > 0) { mk.evT -= 5; if (mk.evT <= 0) { mk.ev = 0; mk.kind = ''; S.events.push({ type: 'market', kind: 'normal' }); } }
+  else if (S.hires >= 1 && S.t >= mk.nextEv) {
+    const short = rnd() < 0.5;
+    mk.ev = short ? 1.8 : 0.55; mk.kind = short ? 'shortage' : 'glut'; mk.evT = 90 + rnd() * 60;
+    mk.nextEv = S.t + 240 + rnd() * 240; S.events.push({ type: 'market', kind: mk.kind });
+  }
+  mk.p = Math.max(0.4, Math.min(3, Math.exp(mk.lp) * (mk.ev || 1)));
+  mk.hist.push(mk.p); while (mk.hist.length > 72) mk.hist.shift();
+  if (S.supplier && S.rule === 2 && mk.p <= RULES[2].max) fillWarehouse(S);
+}
+
+/* manual bench */
+function benchStart(S, special) {
+  // returns number of bends the player must do (3, or fewer from a blank), or 0 if impossible
+  if (special) return 3;
+  if (S.blanks >= 1 && S.hires < 3) { S.blanks -= 1; return 3 - S.hires; }
+  if (!takeWire(S, WIRE)) return 0;
+  return 3;
+}
+function benchFinish(S, special) {
+  if (special) return;
+  S.manual++; addClips(S, 1);
+}
+
+function addClips(S, n) {
+  S.clips += n;
+  for (const o of S.ord.list) if (o.st === 'run') o.made += n;
+  while (S.ms < MILESTONES.length && S.clips >= MILESTONES[S.ms].clips) {
+    const m = MILESTONES[S.ms];
+    S.cash += m.reward; S.st.mil += m.reward; if (!S.framed.includes(m.id)) S.pending.push(m.id); S.events.push({ type: 'milestone', id: m.id, index: S.ms });
+    S.ms++;
+  }
+}
+
+/* customer orders: a number of clips inside a time window, with a deposit up front */
+const ORD_T = [60, 90, 120, 180], ORD_LO = 0.12, ORD_HI = 0.3;   // pay per clip, easy to hard
+function round2(n) { const e = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1)); return Math.max(10, Math.round(n / e) * e); }
+function offerOrder(S) {
+  const r = (benchRate(S) + machRate(S) * powerEff(S));
+  if (r <= 0) return;
+  const T = ORD_T[Math.floor(rnd() * ORD_T.length)], k = 0.9 + rnd() * 0.6;
+  const n = round2(r * T * k);
+  const pay = Math.round(n * (ORD_LO + (ORD_HI - ORD_LO) * (k - 0.9) / 0.6));
+  S.ord.list.push({ id: ++S.ord.seq, n, T, pay, dep: Math.round(pay * 0.25), st: 'offer', left: 150, made: 0 });
+}
+function acceptOrder(S, id) {
+  const o = S.ord.list.find(x => x.id === id);
+  if (!o || o.st !== 'offer' || S.cash < o.dep || S.ord.list.filter(x => x.st === 'run').length >= 2) return false;
+  S.cash -= o.dep; o.st = 'run'; o.left = o.T; o.made = 0; return true;
+}
+function startOvertime(S) {
+  if (S.ot.on > 0 || S.ot.cd > 0 || S.hires < 3) return false;
+  S.ot.on = OT_LEN; return true;
+}
+function ordersTick(S, dt) {
+  if (S.hires >= 3) {
+    const offers = S.ord.list.filter(o => o.st === 'offer').length;
+    if (S.t >= S.ord.next && offers < 3) { offerOrder(S); S.ord.next = S.t + 25 + rnd() * 30; }
+  }
+  for (const o of S.ord.list) {
+    if (o.st === 'run') {
+      o.left -= dt;
+      if (o.made >= o.n) { const bonus = Math.round(o.pay * 0.25 * Math.max(0, o.left) / o.T); o.got = o.dep + o.pay + bonus; S.cash += o.got; S.st.ord += o.got; S.st.ordN++; o.st = 'done'; S.events.push({ type: 'order', ok: true, n: o.n, got: o.got, pay: o.pay + bonus }); }
+      else if (o.left <= 0) { o.st = 'fail'; S.st.ordX++; S.events.push({ type: 'order', ok: false, n: o.n, lost: o.dep }); }
+    } else if (o.st === 'offer') { o.left -= dt; if (o.left <= 0) o.st = 'gone'; }
+  }
+  S.ord.list = S.ord.list.filter(o => o.st === 'offer' || o.st === 'run');
+}
+
+/* breakdowns: a random line jams; click it on the floor to repair, or hire a crew */
+const BD_GAP = 90;
+function ownedTiers(S) { const o = []; for (let i = 0; i < GENS.length; i++) if (S.gens[i] > 0) o.push(i); return o; }
+function crewDelay(S) { return has(S, 'cr3') ? 6 : has(S, 'cr2') ? 22 : has(S, 'cr1') ? 60 : Infinity; }
+function repairCost(S, i) { return GENS[i].cost * S.gens[i] * (S.bd[i] || 0) * 0.03; }
+function repairTier(S, i) {
+  if (!(S.bd[i] > 0)) return false;
+  const c = repairCost(S, i); if (S.cash < c) return false;
+  S.cash -= c; S.bd[i] = 0; S.bdFix[i] = 0; return true;
+}
+function bdTick(S, dt) {
+  if (S.hires < 3) return;
+  const owned = ownedTiers(S); if (!owned.length) return;
+  S.bdT -= dt;
+  if (S.bdT <= 0) {
+    S.bdT = BD_GAP * (0.6 + 0.8 * rnd()) * (has(S, 'sv1') ? 1.7 : 1) * (has(S, 'sv2') ? 1.7 : 1) * (has(S, 'sv3') ? 1.7 : 1);
+    const i = owned[Math.floor(rnd() * owned.length)], before = S.bd[i] || 0;
+    S.bd[i] = Math.min(1, before + Math.max(0.4, Math.min(1, 2 / S.gens[i])));
+    if (before < 0.01) S.bdFix[i] = 0;
+    S.st.jams++; S.events.push({ type: 'jam', i });
+  }
+  const d = crewDelay(S);
+  if (d < Infinity) for (const i of owned) if (S.bd[i] > 0) { S.bdFix[i] += dt; if (S.bdFix[i] >= d) repairTier(S, i); }
+}
+/* the gallery: visitors sometimes snag the chain; you bend replacement links at the bench */
+function repairNeed(S) { return 1 + (S.ms >= 10 ? 1 : 0) + (S.ms >= 16 ? 1 : 0) + (S.ms >= 22 ? 1 : 0) + (S.ms >= 30 ? 1 : 0); }
+function breakGap(S) { return (200 + rnd() * 240) * (has(S, 'gb1') ? 1.6 : 1) * (has(S, 'gb2') ? 1.6 : 1); }
+function curDelay(S) { return has(S, 'cu2') ? 25 : has(S, 'cu1') ? 80 : Infinity; }
+function repairLink(S) {
+  const gb = S.gb; if (!gb.broken) return false;
+  gb.done++;
+  if (gb.done >= gb.need) { gb.broken = 0; gb.done = 0; gb.fix = 0; S.events.push({ type: 'galfixed' }); }
+  return true;
+}
+function galTick(S, dt) {
+  if (!has(S, 'g0')) return;
+  const gb = S.gb;
+  if (gb.broken) { const d = curDelay(S); if (d < Infinity) { gb.fix += dt; if (gb.fix >= d) { gb.done = gb.need; gb.broken = 0; gb.done = 0; gb.fix = 0; S.events.push({ type: 'galfixed', auto: 1 }); } } return; }
+  gb.t -= dt;
+  if (gb.t <= 0) { gb.broken = 1; gb.need = repairNeed(S); gb.done = 0; gb.fix = 0; gb.t = breakGap(S); S.st.snags++; S.events.push({ type: 'galbreak', need: gb.need }); }
+}
+/* prestige: a new factory, keeping the wall and a permanent bonus */
+function legacyGain(S) { const c = S.clips; if (c < 1e9) return 0; return Math.max(0, Math.floor(5 * Math.pow(Math.log10(c) - 8, 1.5))); }
+function prestige(S) {
+  const g = legacyGain(S); if (g < 1) return 0;
+  const n = newState();
+  n.lp = (S.lp || 0) + g; n.runs = (S.runs || 0) + 1; n.framed = S.framed.slice(); n.muted = S.muted; n.manual = S.manual;
+  n.st = S.st; n.life = { clips: S.life.clips + S.clips, t: S.life.t + S.t };
+  n.cash = 8 + 20 * n.lp;
+  for (const k of Object.keys(n)) S[k] = n[k];
+  return g;
+}
+/* bring an older save up to date */
+function migrate(S) {
+  const d = newState();
+  for (const k of Object.keys(d)) if (!(k in S)) S[k] = d[k];
+  while (S.gens.length < GENS.length) S.gens.push(0);
+  while (S.bd.length < GENS.length) S.bd.push(0);
+  while (S.bdFix.length < GENS.length) S.bdFix.push(0);
+  if (!S.infra || S.infra < 1) {
+    let pw = 0; while (pw < PW.length - 1 && PW[pw].cap < powerDemand(S)) pw++;
+    let fl = 0; while (fl < FL.length - 1 && FL[fl].cap < spaceUsed(S)) fl++;
+    S.pw = Math.max(S.pw || 0, pw); S.fl = Math.max(S.fl || 0, fl); S.infra = 1;
+  }
+  if (S.ups.g0 && !(S.tp > 0)) S.tp = ticketIdeal(S);
+  return S;
+}
+
+function tick(S, dt) {
+  S.t += dt;
+  if (S.ot.on > 0) { S.ot.on -= dt; if (S.ot.on <= 0) { S.ot.on = 0; S.ot.cd = OT_CD; } }
+  else if (S.ot.cd > 0) S.ot.cd = Math.max(0, S.ot.cd - dt);
+  S.mk.acc += dt; while (S.mk.acc >= 5) { S.mk.acc -= 5; marketStep(S); }
+  const mu = rateMult(S);
+  if (S.hires >= 1 && S.hires < 3 && S.blanks < BIN) {
+    S.blankAcc += BLANK_RATE[S.hires - 1] * mu * dt;
+    while (S.blankAcc >= 1 && S.blanks < BIN) {
+      if (!takeWire(S, WIRE)) { S.blankAcc = 1; break; }
+      S.blanks++; S.blankAcc -= 1;
+    }
+  }
+  const r = outRate(S);
+  if (r > S.st.peak) S.st.peak = r;
+  S.st.kwh += powerDemand(S) * dt / 3600;
+  if (r > 0) {
+    const made = takeWireBulk(S, r * dt);
+    if (made > 0) addClips(S, made);
+  }
+  bdTick(S, dt); galTick(S, dt);
+  if (has(S, 'g0')) { const gi = galIncome(S) * dt; S.cash += gi; S.st.gal += gi; }
+  ordersTick(S, dt);
+}
+
+/* ---- shop ---- */
+function genCost(S, i, n) { const g = GENS[i]; return g.cost * Math.pow(GROW, S.gens[i]) * (Math.pow(GROW, n) - 1) / (GROW - 1); }
+function roomFor(S, i) { return Math.max(0, Math.floor((spaceCap(S) - spaceUsed(S)) / GENS[i].sp + 1e-9)); }
+function genMax(S, i) {
+  const g = GENS[i]; const base = g.cost * Math.pow(GROW, S.gens[i]);
+  if (S.cash < base) return 0;
+  return Math.max(0, Math.min(roomFor(S, i), Math.floor(Math.log(S.cash * (GROW - 1) / base + 1) / Math.log(GROW))));
+}
+function buyGen(S, i, n) {
+  if (S.hires < 3 || n < 1 || n > roomFor(S, i)) return 0;
+  const c = genCost(S, i, n); if (S.cash < c) return 0;
+  S.cash -= c; S.gens[i] += n; return n;
+}
+function buyHire(S) {
+  if (S.hires >= 3) return false;
+  const h = HIRES[S.hires]; if (S.cash < h.cost) return false;
+  S.cash -= h.cost; S.hires++; S.blankAcc = 0; return true;
+}
+/* one-time items. group: supplies | efficiency | gallery */
+function items(S) {
+  const out = [];
+  out.push({ id: 'sup', group: 'supplies', name: 'Supplier account', desc: 'A van tops up the wire when you run low. Pays by the spool.', cost: 40, show: S.hires >= 1 });
+  for (let t = 1; t < SPOOLS.length; t++) {
+    const sp = SPOOLS[t];
+    out.push({ id: 'sp' + t, group: 'supplies', name: 'Bulk spools: ' + fmtM(sp.size), desc: '£' + sp.ppm.toFixed(3) + ' per metre of wire.', cost: SPOOL_UP_COST[t], show: S.spool === t - 1 });
+  }
+  for (const u of MULTS) out.push({ id: u.id, group: 'efficiency', name: u.name, desc: u.desc + ' All machines ×' + u.mult + '.', cost: u.cost, show: S.hires >= 3 && (u.id === 'm1' || has(S, 'm' + (+u.id.slice(1) - 1))) });
+  for (const u of GAL) out.push({ id: u.id, group: 'gallery', name: u.name, desc: u.desc + (u.id === 'g0' ? '' : ' Income ×' + u.mult + '.'), cost: u.cost, show: u.id === 'g0' ? S.ms >= 4 : has(S, 'g' + (+u.id.slice(1) - 1)) });
+  const nm = ownedTiers(S).reduce((a, i) => a + S.gens[i], 0), hasM = S.hires >= 3 && nm >= 4;
+  out.push({ id: 'sv1', group: 'maint', name: 'Service contract', desc: 'Scheduled servicing. Jams come 1.7 times less often.', cost: 2500, show: hasM });
+  out.push({ id: 'sv2', group: 'maint', name: 'Preventive maintenance', desc: 'Parts are replaced before they fail. Jams 1.7 times rarer again.', cost: 4e5, show: has(S, 'sv1') });
+  out.push({ id: 'sv3', group: 'maint', name: 'Condition monitoring', desc: 'Every bearing reports in. Jams 1.7 times rarer again.', cost: 6e7, show: has(S, 'sv2') });
+  out.push({ id: 'cr1', group: 'maint', name: 'Fitter on call', desc: 'Fixes a jam about a minute after it happens. Parts come out of your cash.', cost: 6000, show: hasM });
+  out.push({ id: 'cr2', group: 'maint', name: 'Maintenance crew', desc: 'Fixes jams in about 20 seconds.', cost: 8e5, show: has(S, 'cr1') });
+  out.push({ id: 'cr3', group: 'maint', name: 'Predictive repair robots', desc: 'Jams are fixed in about 6 seconds.', cost: 1e8, show: has(S, 'cr2') });
+  out.push({ id: 'gb1', group: 'gallery', name: 'Crowd barriers', desc: 'Visitors snag the chain 1.6 times less often.', cost: 1500, show: has(S, 'g1') });
+  out.push({ id: 'gb2', group: 'gallery', name: 'Glass cases', desc: 'Fewer snags again.', cost: 3e5, show: has(S, 'gb1') && has(S, 'g3') });
+  out.push({ id: 'cu1', group: 'gallery', name: 'Conservator on call', desc: 'Repairs a snagged chain by themselves in about 80 seconds.', cost: 9000, show: has(S, 'g2') });
+  out.push({ id: 'cu2', group: 'gallery', name: 'Conservation team', desc: 'Repairs a snagged chain in about 25 seconds.', cost: 2e7, show: has(S, 'cu1') && has(S, 'g5') });
+  return out.map(o => Object.assign(o, { owned: o.id.startsWith('sp') && o.id !== 'sup' ? S.spool >= +o.id.slice(2) : has(S, o.id) }));
+}
+function buyItem(S, id) {
+  const it = items(S).find(x => x.id === id);
+  if (!it || it.owned || !it.show || S.cash < it.cost) return false;
+  S.cash -= it.cost;
+  if (id === 'sup') { S.supplier = true; S.ups.sup = 1; }
+  else if (id === 'g0') { S.ups.g0 = 1; S.tp = ticketIdeal(S); }
+  else if (id.startsWith('sp')) { S.spool = +id.slice(2); S.ups[id] = 1; }
+  else S.ups[id] = 1;
+  return true;
+}
+function nextSite(S, kind) { const L = kind === 'pw' ? PW : kind === 'fl' ? FL : WH; const n = L[S[kind] + 1]; return n || null; }
+function buySite(S, kind) {
+  const n = nextSite(S, kind); if (!n || S.cash < n.cost) return false;
+  S.cash -= n.cost; S[kind]++; return true;
+}
+function fmtM(m) { return m >= 1e6 ? (m / 1e6) + ' Mm' : m >= 1000 ? (m / 1000) + ' km' : m + ' m'; }
+
+const api = { seed, legMult, rateMult, galState, setTicket, ticketIdeal, ownedTiers, repairCost, repairTier, crewDelay, curDelay, repairLink, repairNeed, legacyGain, prestige, migrate, BD_GAP, PW, FL, WH, RULES, RUSH, LIMP, WIRE_K, OT_LEN, OT_CD, OT_RATE, OT_POWER, ORD_T, machRate, benchRate, spaceUsed, spaceCap, powerDemand, powerCap, powerEff, outRate, ppm, wireCap, wireUse, priceBand, canBuySpool, fillCost, fillWarehouse, setRule, roomFor, nextSite, buySite, offerOrder, acceptOrder, startOvertime, PI, CLIP_LEN, CLIP_KG, GEO, WIRE, WIRE_MM, S_START, DS, shape, ptAt, pegCentre, handleS, PALETTE, MILESTONES, BIN, HIRES, BENCH_RATE, BLANK_RATE,
+  GENS, GROW, SPOOLS, MULTS, GAL, newState, has, multAll, galMult, genRate, lengthM, galIncome, ticket, spoolSize, spoolPrice, wireCostPerClip,
+  takeWire, buySpool, scrounge, benchStart, benchFinish, addClips, tick, genCost, genMax, buyGen, buyHire, items, buyItem };
+return api;
+})();
+if (typeof module !== 'undefined') module.exports = CORE;
+
+</script>
+<script>
+(() => {
+'use strict';
+const C = CORE;
+const $ = (s) => document.querySelector(s);
+const SAVE_KEY = 'clipchain.save.v1';
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+const STEEL = '#d6dff0';
+
+/* ---------- save / load ---------- */
+function loadSave() {
+  const d = C.newState();
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const o = JSON.parse(raw);
+      if (o && o.v === 1) {
+        for (const k of Object.keys(d)) if (k in o && typeof o[k] === typeof d[k] && !(typeof o[k] === 'number' && !isFinite(o[k]))) d[k] = o[k];
+        d.gens = C.GENS.map((_, i) => +(o.gens && o.gens[i]) || 0);
+        d.events = [];
+        d.infra = +o.infra || 0;
+        C.migrate(d);
+      }
+    }
+  } catch (e) { /* storage may be blocked */ }
+  return d;
+}
+let S = loadSave();
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
+
+/* ---------- number formatting ---------- */
+const SUF = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc', 'Ud', 'Dd'];
+const nf = new Intl.NumberFormat('en-GB');
+function sci(n) { const e = Math.min(Math.floor(Math.log10(n) / 3), SUF.length - 1); const v = n / Math.pow(1000, e); return v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0) + SUF[e]; }
+function fInt(n) { n = Math.floor(n + 1e-9); return n < 1e13 ? nf.format(n) : sci(n); }
+function fMoney(n) { if (n < 1000) return '£' + (n % 1 === 0 ? n : n.toFixed(2)); if (n < 1e6) return '£' + nf.format(Math.floor(n)); return '£' + sci(n); }
+function fRate(n) { return n < 10 ? n.toFixed(2) : n < 1000 ? n.toFixed(n < 100 ? 1 : 0) : sci(n); }
+function fPow(kw) { if (kw < 1000) return nf.format(Math.round(kw)) + ' kW'; const U = ['kW', 'MW', 'GW', 'TW', 'PW', 'EW', 'ZW', 'YW']; const e = Math.min(Math.floor(Math.log10(kw) / 3), U.length - 1); const v = kw / Math.pow(1000, e); return v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0) + ' ' + U[e]; }
+function fDur(s) { s = Math.max(0, Math.round(s)); return s < 90 ? s + ' s' : s < 5400 ? Math.round(s / 60) + ' min' : s < 172800 ? (s / 3600).toFixed(1) + ' h' : '1+ days'; }
+function fWire(m) { return m >= 1e6 ? sci(m / 1000) + ' km' : m >= 1000 ? (m / 1000).toFixed(m < 1e4 ? 2 : 1) + ' km' : m.toFixed(m < 100 ? 1 : 0) + ' m'; }
+function fRatio(r) { return r < 10 ? r.toFixed(1) : r < 1e6 ? nf.format(Math.round(r)) : sci(r); }
+function fLen(m) {
+  if (m < 0.01) return (m * 1000).toFixed(0) + ' mm';
+  if (m < 1) return (m * 100).toFixed(1) + ' cm';
+  if (m < 1000) return (m < 10 ? m.toFixed(2) : m < 100 ? m.toFixed(1) : m.toFixed(0)) + ' m';
+  const km = m / 1000;
+  if (km < 1000) return (km < 10 ? km.toFixed(2) : km < 100 ? km.toFixed(1) : km.toFixed(0)) + ' km';
+  if (km < 1e6) return nf.format(Math.round(km)) + ' km';
+  if (km < 1.496e8) return (km / 1e6).toFixed(2) + ' million km';
+  const au = m / 1.496e11;
+  if (au < 1e4) return (au < 10 ? au.toFixed(2) : au < 100 ? au.toFixed(1) : nf.format(Math.round(au))) + ' AU';
+  const ly = m / 9.4607e15;
+  if (ly < 1e6) return (ly < 10 ? ly.toFixed(2) : ly < 100 ? ly.toFixed(1) : nf.format(Math.round(ly))) + ' light-years';
+  return sci(ly) + ' light-years';
+}
+const MS = C.MILESTONES;
+function compare(L) {
+  if (L < MS[0].len) return Math.round(L / MS[0].len * 100) + '% of the way to ' + MS[0].name;
+  let i = 0; while (i + 1 < MS.length && L >= MS[i + 1].len) i++;
+  const r = L / MS[i].len;
+  return r < 1.1 ? 'About as long as ' + MS[i].name : fRatio(r) + '× ' + MS[i].name;
+}
+/* weight and speed ladders: real masses in kg, real speeds in m/s */
+const WT_LADDER = [[0.0035, 'a sugar cube'], [0.00875, 'a £1 coin'], [0.06, 'a hen\'s egg'], [1, 'a bag of sugar'], [4.5, 'a house cat'], [7, 'a bowling ball'], [25, 'a bag of cement'], [80, 'an adult human'], [450, 'a grand piano'], [1000, 'a small car'], [6000, 'an elephant'], [12000, 'a double-decker bus'], [150000, 'a blue whale'], [180000, 'a Boeing 747'], [1.01e7, 'the Eiffel Tower'], [5.2e7, 'the Titanic'], [1e8, 'an aircraft carrier'], [5.9e9, 'the Great Pyramid'], [5e11, 'every human alive'], [1.6e14, 'Mount Everest'], [1.2e16, 'Lake Superior'], [5.1e18, 'the whole atmosphere'], [2.6e20, 'the asteroid Vesta'], [9.4e20, 'the dwarf planet Ceres'], [7.3e22, 'the Moon'], [6e24, 'planet Earth'], [1.9e27, 'Jupiter'], [2e30, 'the Sun']];
+const SPD_LADDER = [[0.013, 'a garden snail'], [1.4, 'a brisk walk'], [12.4, 'Usain Bolt'], [29, 'a cheetah'], [89, 'a bullet train'], [250, 'a passenger jet'], [343, 'the speed of sound'], [900, 'a rifle bullet'], [7660, 'the space station'], [11200, 'Earth\'s escape velocity'], [17000, 'Voyager 1'], [1.92e5, 'the Parker Solar Probe'], [299792458, 'the speed of light']];
+function compareLadder(x, ladder, verb) {
+  if (!(x > 0)) return 'Nothing yet';
+  if (x < ladder[0][0]) return Math.max(1, Math.round(x / ladder[0][0] * 100)) + '% of ' + ladder[0][1];
+  let i = 0; while (i + 1 < ladder.length && x >= ladder[i + 1][0]) i++;
+  const r = x / ladder[i][0];
+  return r < 1.1 ? 'About as ' + verb + ' as ' + ladder[i][1] : fRatio(r) + '× ' + ladder[i][1];
+}
+const SUPD = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+function expo(v) { const e = Math.floor(Math.log10(v)); return (v / Math.pow(10, e)).toFixed(1) + ' × 10' + String(e).split('').map(d => SUPD[+d]).join(''); }
+function fMass(kg) {
+  if (kg <= 0) return '0 g';
+  if (kg < 1) { const g = kg * 1000; return (g < 10 ? g.toFixed(2) : g < 100 ? g.toFixed(1) : g.toFixed(0)) + ' g'; }
+  if (kg < 1000) return (kg < 10 ? kg.toFixed(2) : kg < 100 ? kg.toFixed(1) : kg.toFixed(0)) + ' kg';
+  const t = kg / 1000;
+  if (t < 1e6) return (t < 10 ? t.toFixed(2) : t < 100 ? t.toFixed(1) : nf.format(Math.round(t))) + ' tonnes';
+  if (t < 1e9) return (t / 1e6).toFixed(2) + ' million tonnes';
+  if (t < 1e12) return (t / 1e9).toFixed(2) + ' billion tonnes';
+  return expo(t) + ' tonnes';
+}
+function fSpeed(v) {
+  if (v < 0.001) return '0 m/s';
+  if (v < 1) return Math.round(v * 1000) + ' mm/s';
+  if (v < 1000) return (v < 10 ? v.toFixed(2) : v < 100 ? v.toFixed(1) : v.toFixed(0)) + ' m/s';
+  const k = v / 1000;
+  if (k < 1e5) return (k < 10 ? k.toFixed(2) : k < 100 ? k.toFixed(1) : nf.format(Math.round(k))) + ' km/s';
+  return sci(k) + ' km/s';
+}
+function fSpan(s) {
+  if (!(s > 0)) return '0 s';
+  if (s < 1e-6) return (s * 1e9).toFixed(1) + ' ns';
+  if (s < 1e-3) return (s * 1e6).toFixed(1) + ' µs';
+  if (s < 1) return (s * 1000).toFixed(1) + ' ms';
+  if (s < 90) return s.toFixed(s < 10 ? 1 : 0) + ' s';
+  if (s < 5400) return Math.round(s / 60) + ' min';
+  if (s < 172800) return (s / 3600).toFixed(1) + ' h';
+  if (s < 6.3e7) return Math.round(s / 86400) + ' days';
+  const y = s / 3.156e7;
+  return y < 1e6 ? nf.format(Math.round(y)) + ' years' : sci(y) + ' years';
+}
+function fEnergy(kwh) { if (kwh < 1000) return (kwh < 10 ? kwh.toFixed(2) : kwh < 100 ? kwh.toFixed(1) : kwh.toFixed(0)) + ' kWh'; const U = ['kWh', 'MWh', 'GWh', 'TWh', 'PWh', 'EWh', 'ZWh', 'YWh']; const e = Math.min(Math.floor(Math.log10(kwh) / 3), U.length - 1); const v = kwh / Math.pow(1000, e); return v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0) + ' ' + U[e]; }
+function fPct(x) { return x < 0.0001 ? '<0.01%' : x < 1 ? (x * 100).toFixed(x < 0.1 ? 2 : 1) + '%' : fRatio(x) + '×'; }
+function fPlayTime(s) { const m = Math.floor(s / 60); return m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min'; }
+const msById = (id) => MS.find(m => m.id === id);
+const REPAIR_COL = '#ff6b35';
+const spCol = (id) => id === 'repair' ? REPAIR_COL : msById(id).col;
+const spName = (id) => id === 'repair' ? 'Repair link' : msById(id).short;
+
+/* ---------- audio ---------- */
+let AC = null;
+function beep(f, d, type, v, slide) {
+  if (S.muted) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'square'; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, f + slide), t + d);
+    g.gain.setValueAtTime(v || 0.04, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    o.connect(g); g.connect(AC.destination); o.start(t); o.stop(t + d + 0.02);
+  } catch (e) { /* audio is optional */ }
+}
+const sfx = {
+  cut() { beep(1200, 0.06, 'square', 0.04, -700); setTimeout(() => beep(500, 0.05, 'square', 0.03, -200), 70); },
+  grab() { beep(260, 0.04, 'triangle', 0.04); },
+  bend(i) { beep(330 + i * 110, 0.09, 'square', 0.05, 90); },
+  link() { beep(740, 0.05, 'square', 0.03); },
+  buy() { beep(520, 0.06, 'square', 0.04); setTimeout(() => beep(780, 0.08, 'square', 0.04), 60); },
+  no() { beep(120, 0.12, 'sawtooth', 0.04); },
+  win() { [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => beep(f, 0.14, 'square', 0.05), k * 90)); },
+};
+
+/* ---------- canvases ---------- */
+function setup(cv, w, h) {
+  cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR); cv.style.aspectRatio = w + ' / ' + h;
+  const g = cv.getContext('2d'); g.setTransform(DPR, 0, 0, DPR, 0, 0); return g;
+}
+const FIN = C.shape([1, 1, 1]);
+const FC = [29, -4.5];
+function glyph(g, cx, cy, k, col, lw, stride, outline) {
+  const n = FIN.n; stride = stride || 2;
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let pass = outline ? 0 : 1; pass < 2; pass++) {
+    g.beginPath();
+    for (let i = 0; i <= n; i += stride) {
+      const x = cx + (FIN.xs[i] - FC[0]) * k, y = cy - (FIN.ys[i] - FC[1]) * k;
+      i ? g.lineTo(x, y) : g.moveTo(x, y);
+    }
+    g.lineWidth = pass === 0 ? lw + 2.5 : lw; g.strokeStyle = pass === 0 ? 'rgba(0,0,0,.5)' : col; g.stroke();
+  }
+}
+
+/* ================= WORKBENCH ================= */
+const cvB = $('#bench');
+const BW = 900, BH = 500, BENCH_H = 360, K = 5.6, OX = 130, OY = 78;
+const CHAIN_X = 770, CHAIN_Y = 440, STEP = 70, CK = 3.0;
+const gb = setup(cvB, BW, BH);
+const X = (mm) => OX + mm * K, Y = (mm) => OY - mm * K;
+const B = { phase: 'idle', special: null, bend: 0, done: 0, f: [0, 0, 0], tab: null, drag: null, cutT: -1e9, feedT: -1e9, hot: [], hover: null };
+function benchState() {
+  const hasBlank = S.blanks >= 1 && S.hires < 3, price = C.spoolPrice(S);
+  const noWire = !hasBlank && S.wire < C.WIRE && !(S.supplier && S.cash >= price);
+  return { idle: B.phase === 'idle', hasBlank, price, noWire };
+}
+function canCutNow() { const st = benchState(); return st.idle && !st.noWire; }
+const chain = { shown: Math.floor(S.clips), slide: 0, inflight: 0 };
+const flyers = [], sparks = [];
+let nowMs = performance.now();
+
+function prepBend(i) {
+  const N = 48, g = [], hx = [], hy = [];
+  const hs = C.handleS(i), pc = C.pegCentre(i);
+  let prev = null;
+  for (let k = 0; k <= N; k++) {
+    const fs = B.f.slice(); fs[i] = k / N;
+    const p = C.ptAt(C.shape(fs), hs);
+    let a = Math.atan2(p[1] - pc[1], p[0] - pc[0]);
+    if (prev !== null) { while (a - prev > Math.PI) a -= 2 * Math.PI; while (a - prev < -Math.PI) a += 2 * Math.PI; }
+    prev = a; g.push(a); hx.push(X(p[0])); hy.push(Y(p[1]));
+  }
+  B.tab = { i, N, g, hx, hy, cx: X(pc[0]), cy: Y(pc[1]), r: C.GEO.r[i] };
+}
+function handleAt(f) {
+  const t = B.tab, p = Math.max(0, Math.min(1, f)) * t.N, k = Math.min(t.N - 1, Math.floor(p)), u = p - k;
+  return [t.hx[k] + (t.hx[k + 1] - t.hx[k]) * u, t.hy[k] + (t.hy[k + 1] - t.hy[k]) * u];
+}
+function angleToF(g, ang) {
+  const N = g.length - 1, a0 = g[0], a1 = g[N], mid = (a0 + a1) / 2;
+  while (ang - mid > Math.PI) ang -= 2 * Math.PI;
+  while (ang - mid < -Math.PI) ang += 2 * Math.PI;
+  if ((ang - a0) * (a1 - a0) <= 0) return 0;
+  if ((ang - a1) * (a0 - a1) <= 0) return 1;
+  for (let k = 0; k < N; k++) {
+    const x0 = g[k], x1 = g[k + 1];
+    if ((ang - x0) * (ang - x1) <= 0 && x0 !== x1) return (k + (ang - x0) / (x1 - x0)) / N;
+  }
+  return (ang - a0) / (a1 - a0);
+}
+function burst(x, y, col, n, sp) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * 6.283, v = (0.4 + Math.random()) * (sp || 120);
+    sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.4, t: 0, col });
+  }
+}
+function startClip(special) {
+  if (B.phase !== 'idle') return;
+  const nb = C.benchStart(S, special);
+  if (!nb) { sfx.no(); return; }
+  B.special = special || null; B.done = 3 - nb; B.bend = B.done;
+  B.f = [B.done > 0 ? 1 : 0, B.done > 1 ? 1 : 0, 0];
+  B.phase = 'bend'; B.drag = null; prepBend(B.bend);
+  if (!special && nb === 3) { B.cutT = nowMs; sfx.cut(); burst(OX - 14, OY, '#ff9f1c', 8, 90); } else sfx.grab();
+}
+function completeBend() {
+  const i = B.bend, t = B.tab;
+  B.f[i] = 1; B.drag = null; B.done = i + 1;
+  burst(t.cx, t.cy, B.special ? spCol(B.special) : '#35e0ff', 14, 150); sfx.bend(i);
+  if (i < 2) { B.bend = i + 1; prepBend(B.bend); } else finishClip();
+}
+function finishClip() {
+  const sp = B.special, col = sp ? spCol(sp) : STEEL;
+  const fl = { t0: nowMs, dur: sp ? 900 : 520, col, special: !!sp, x0: X(FC[0]), y0: Y(FC[1]) };
+  if (sp === 'repair') { C.repairLink(S); sfx.link(); }
+  else if (sp) {
+    S.pending = S.pending.filter(id => id !== sp); S.framed.push(sp); frameJustFramed = sp; updateWall(false); sfx.win();
+    toast(msById(sp).col, 'On the wall', msById(sp).short + ' clip framed.');
+  } else { C.benchFinish(S, false); chain.inflight++; }
+  flyers.push(fl);
+  burst(fl.x0, fl.y0, col, 18, 170);
+  B.phase = 'idle'; B.special = null; B.f = [0, 0, 0]; B.tab = null; B.feedT = nowMs;
+}
+function toCanvas(e) { const r = cvB.getBoundingClientRect(); return [(e.clientX - r.left) * BW / r.width, (e.clientY - r.top) * BH / r.height]; }
+function hotAt(x, y) { for (const h of B.hot) if (h.on && x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) return h; return null; }
+function runHot(h) {
+  if (h.id === 'cut') startClip(null);
+  else if (h.id === 'special') { if (S.pending.length) startClip(S.pending[0]); }
+  else if (h.id === 'repair') { if (S.gb.broken) startClip('repair'); }
+  else if (h.id === 'spool') { if (C.buySpool(S)) { sfx.buy(); B.feedT = nowMs; } else if (!C.canBuySpool(S)) sfx.no(); else if (C.scrounge(S)) { sfx.buy(); B.feedT = nowMs; } else sfx.no(); }
+}
+cvB.addEventListener('pointerdown', (e) => {
+  if (B.drag) return;
+  const [x, y] = toCanvas(e);
+  const h = hotAt(x, y);
+  if (h) { e.preventDefault(); runHot(h); return; }
+  if (B.phase !== 'bend') return;
+  const [hx, hy] = handleAt(B.f[B.bend]);
+  if (Math.hypot(x - hx, y - hy) < 52) { cvB.style.cursor = 'grabbing'; B.drag = { pid: e.pointerId }; try { cvB.setPointerCapture(e.pointerId); } catch (er) { /* ok */ } e.preventDefault(); sfx.grab(); }
+});
+cvB.addEventListener('pointermove', (e) => {
+  if (!B.drag) {
+    const [px, py] = toCanvas(e), h = hotAt(px, py);
+    B.hover = h ? h.id : null;
+    if (h) cvB.style.cursor = 'pointer';
+    else if (B.phase === 'bend') { const [hx, hy] = handleAt(B.f[B.bend]); cvB.style.cursor = Math.hypot(px - hx, py - hy) < 52 ? 'grab' : 'default'; }
+    else cvB.style.cursor = 'default';
+    return;
+  }
+  if (B.phase !== 'bend') return;
+  const [x, y] = toCanvas(e), t = B.tab;
+  const f = angleToF(t.g, Math.atan2(-(y - t.cy), x - t.cx));
+  if (Math.abs(f - B.f[B.bend]) > 0.45) return;
+  B.f[B.bend] = f;
+  if (f >= 0.97) completeBend();
+});
+cvB.addEventListener('pointerleave', () => { B.hover = null; });
+const endDrag = () => { B.drag = null; cvB.style.cursor = 'default'; };
+cvB.addEventListener('pointerup', endDrag); cvB.addEventListener('pointercancel', endDrag); cvB.addEventListener('lostpointercapture', endDrag);
+
+function spoolDraw(g, cx, cy, fill) {
+  g.save(); g.translate(cx, cy);
+  g.fillStyle = '#1b2166'; g.beginPath(); g.arc(0, 0, 44, 0, 7); g.fill();
+  g.strokeStyle = '#3a43a8'; g.lineWidth = 3; g.stroke();
+  const R = 14 + 26 * Math.max(0.04, Math.min(1, fill));
+  g.fillStyle = '#aab4d6'; g.beginPath(); g.arc(0, 0, R, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(20,26,80,.35)'; g.lineWidth = 1;
+  for (let r = 16; r < R; r += 3.5) { g.beginPath(); g.arc(0, 0, r, 0, 7); g.stroke(); }
+  g.fillStyle = '#0c1036'; g.beginPath(); g.arc(0, 0, 9, 0, 7); g.fill();
+  g.restore(); return R;
+}
+function wireStroke(g, pts, col, lw) {
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = lw + 3; g.beginPath(); pts(); g.stroke();
+  g.strokeStyle = col; g.lineWidth = lw; g.beginPath(); pts(); g.stroke();
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 1.2; g.beginPath(); pts(-1); g.stroke();
+}
+function shearsDraw(g, x, y, open, col) {
+  g.save(); g.lineCap = 'round'; g.strokeStyle = col || '#ff9f1c'; g.lineWidth = 4;
+  for (const s of [-1, 1]) {
+    g.beginPath(); g.moveTo(x, y - 40); g.lineTo(x + s * Math.sin(open) * 34, y - 40 + Math.cos(open) * 34); g.stroke();
+    g.beginPath(); g.arc(x - s * 7, y - 46, 5, 0, 7); g.stroke();
+  }
+  g.restore();
+}
+
+function drawBench(dt) {
+  const g = gb, now = nowMs;
+  g.clearRect(0, 0, BW, BH);
+  g.fillStyle = '#0c1036'; g.fillRect(0, 0, BW, BENCH_H);
+  g.strokeStyle = 'rgba(70,84,200,.15)'; g.lineWidth = 1;
+  for (let mm = -10; mm <= 140; mm += 10) { g.beginPath(); g.moveTo(X(mm), 24); g.lineTo(X(mm), BENCH_H); g.stroke(); }
+  for (let mm = 0; mm >= -60; mm -= 10) { const y = Y(mm); if (y > 24 && y < BENCH_H) { g.beginPath(); g.moveTo(0, y); g.lineTo(BW, y); g.stroke(); } }
+  g.fillStyle = '#151a52'; g.fillRect(0, 0, BW, 24);
+  g.fillStyle = '#8f96ca'; g.strokeStyle = '#8f96ca'; g.font = '10px "Chakra Petch", sans-serif';
+  for (let mm = 0; mm <= 135; mm += 5) {
+    const x = X(mm), long = mm % 10 === 0;
+    g.beginPath(); g.moveTo(x, 24); g.lineTo(x, long ? 15 : 19); g.stroke();
+    if (mm % 20 === 0) g.fillText(String(mm), x + 3, 12);
+  }
+  g.fillText('mm', 6, 12);
+
+  // spool and strand
+  const fill = S.wire / C.spoolSize(S);
+  const R = spoolDraw(g, 66, OY, fill);
+  const full = X(C.WIRE_MM), stub = OX - 20;
+  const feed = Math.min(1, (now - B.feedT) / 500);
+  const e = 1 - Math.pow(1 - feed, 3);
+  const strandEnd = B.phase === 'idle' ? (S.wire >= C.WIRE || S.supplier ? stub + (full - stub) * e : stub) : stub;
+  if (strandEnd > 66 + R) wireStroke(g, () => { g.moveTo(66 + R - 2, OY); g.lineTo(strandEnd, OY); }, STEEL, 5);
+  let open = 0.34 + 0.07 * Math.sin(now / 260);
+  const ct = now - B.cutT;
+  if (ct < 260) open = ct < 110 ? 0.34 - 0.3 * (ct / 110) : 0.04 + 0.3 * ((ct - 110) / 150);
+  g.strokeStyle = B.phase === 'idle' ? 'rgba(255,159,28,.8)' : 'rgba(255,159,28,.25)'; g.lineWidth = 2; g.setLineDash([4, 5]);
+  g.beginPath(); g.moveTo(OX - 14, OY - 12); g.lineTo(OX - 14, OY + 16); g.stroke(); g.setLineDash([]);
+  const st = benchState(), cutOn = st.idle && !st.noWire, hovCut = B.hover === 'cut';
+  B.hot = [];
+  B.hot.push({ id: 'cut', x: OX - 14 - 36, y: 22, w: 76, h: 98, on: cutOn });
+  if (cutOn && !st.hasBlank) {
+    const pu = 0.5 + 0.5 * Math.sin(now / 280);
+    g.beginPath(); g.arc(OX - 14, OY - 20, 40 + 3 * pu, 0, 7); g.lineWidth = hovCut ? 3 : 2; g.strokeStyle = 'rgba(255,176,46,' + (hovCut ? 0.95 : 0.25 + 0.3 * pu) + ')'; g.stroke();
+    if (hovCut) { g.fillStyle = 'rgba(255,176,46,.1)'; g.fill(); }
+  }
+  shearsDraw(g, OX - 14, OY, open, cutOn ? '#ffb02e' : '#4a5190');
+  g.textAlign = 'left'; g.font = '9px "Silkscreen", monospace';
+  if (cutOn && !st.hasBlank) { g.fillStyle = '#ffb02e'; g.fillText('CLICK TO CUT', OX + 34, OY - 34); }
+  else if (st.noWire && st.idle) { g.fillStyle = '#ff4d6d'; g.fillText('OUT OF WIRE', OX + 34, OY - 34); }
+  else if (st.hasBlank && st.idle) { g.fillStyle = '#8f96ca'; g.fillText('LOADING BLANK', OX + 34, OY - 34); }
+
+  // spool button (buy a spool, or scrounge when broke)
+  {
+    const price = st.price, full = !C.canBuySpool(S), canBuy = S.cash >= price && !full, scr = st.noWire && !canBuy && !full, cd = Math.ceil(20 - (S.t - S.lastScrounge)), ready = cd <= 0;
+    const sz = C.spoolSize(S), szt = sz >= 1000 ? nf.format(sz / 1000) + ' km' : sz + ' m';
+    const label = full ? 'STORE FULL' : scr ? (ready ? 'SCROUNGE 2 m' : 'SCROUNGE ' + cd + 's') : 'BUY ' + szt + ' SPOOL ' + fMoney(price);
+    const on = scr ? ready && st.idle : canBuy, col = scr ? '#ffb02e' : '#35e0ff', hov = B.hover === 'spool' && on;
+    g.textAlign = 'center'; g.font = '700 11px "Chakra Petch", sans-serif'; const w = Math.ceil(g.measureText(label).width) + 22, x = 66 - w / 2, y = OY + 58, h = 24;
+    B.hot.push({ id: 'spool', x: 8, y: OY - 46, w: 80, h: 92, on }, { id: 'spool', x: Math.max(4, x), y, w, h, on });
+    const pulse = st.noWire && on ? 0.75 + 0.25 * Math.sin(now / 220) : 1;
+    g.globalAlpha = on ? pulse : 1;
+    g.fillStyle = on ? col : '#1d2258'; g.beginPath(); g.roundRect(Math.max(4, x), y, w, h, 3); g.fill();
+    if (on) { g.fillStyle = 'rgba(255,255,255,' + (hov ? 0.3 : 0.18) + ')'; g.fillRect(Math.max(4, x), y, w, 3); }
+    g.globalAlpha = 1;
+    g.fillStyle = on ? '#080a22' : '#7b82b6'; g.textBaseline = 'middle'; g.fillText(label, Math.max(4, x) + w / 2, y + h / 2 + 1); g.textBaseline = 'alphabetic';
+  }
+
+  // blank bin (while hired hands are cutting and first-bending for you)
+  if (S.hires >= 1 && S.hires < 3) {
+    g.textAlign = 'left'; g.fillStyle = '#8f96ca'; g.font = '9px "Silkscreen", monospace'; g.fillText('BLANKS ' + S.blanks + '/' + C.BIN, 752, 118);
+    for (let i = 0; i < C.BIN; i++) {
+      const bx = 752 + i * 18; g.fillStyle = '#10143f'; g.fillRect(bx, 126, 14, 22); g.strokeStyle = '#2b3072'; g.lineWidth = 1; g.strokeRect(bx + .5, 126.5, 13, 21);
+      if (i < S.blanks) { g.strokeStyle = STEEL; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(bx + 7, 130); g.lineTo(bx + 7, 144); g.stroke(); }
+    }
+  }
+  // milestone clip button
+  if (S.pending.length) {
+    const on = st.idle, hov = B.hover === 'special' && on, pu = 0.5 + 0.5 * Math.sin(now / 230);
+    const x = 748, y = 172, w = 146, h = 46;
+    B.hot.push({ id: 'special', x, y, w, h, on });
+    g.fillStyle = on ? '#ffd60a' : '#272c5e'; g.globalAlpha = on ? 0.82 + 0.18 * pu : 1; g.beginPath(); g.roundRect(x, y, w, h, 3); g.fill(); g.globalAlpha = 1;
+    if (on) { g.fillStyle = 'rgba(255,255,255,' + (hov ? 0.3 : 0.2) + ')'; g.fillRect(x, y, w, 3); g.shadowColor = '#ffd60a'; g.shadowBlur = 12 * pu; g.strokeStyle = '#ffd60a'; g.lineWidth = 1; g.strokeRect(x, y, w, h); g.shadowBlur = 0; }
+    g.textAlign = 'center'; g.fillStyle = on ? '#080a22' : '#7b82b6';
+    g.font = '700 12px "Chakra Petch", sans-serif'; g.fillText('MILESTONE CLIP' + (S.pending.length > 1 ? ' x' + S.pending.length : ''), x + w / 2, y + 20);
+    g.font = '600 10px "Chakra Petch", sans-serif'; g.fillText(msById(S.pending[0]).short + ' · click to bend', x + w / 2, y + 36);
+  }
+  if (S.gb.broken) {
+    const on = st.idle, hov = B.hover === 'repair' && on, pu = 0.5 + 0.5 * Math.sin(now / 200);
+    const x = 748, y = S.pending.length ? 226 : 172, w = 146, h = 46, left = S.gb.need - S.gb.done;
+    B.hot.push({ id: 'repair', x, y, w, h, on });
+    g.fillStyle = on ? REPAIR_COL : '#272c5e'; g.globalAlpha = on ? 0.82 + 0.18 * pu : 1; g.beginPath(); g.roundRect(x, y, w, h, 3); g.fill(); g.globalAlpha = 1;
+    if (on) { g.fillStyle = 'rgba(255,255,255,' + (hov ? 0.3 : 0.2) + ')'; g.fillRect(x, y, w, 3); }
+    g.textAlign = 'center'; g.fillStyle = on ? '#1a0a04' : '#7b82b6';
+    g.font = '700 12px "Chakra Petch", sans-serif'; g.fillText('CHAIN SNAGGED', x + w / 2, y + 20);
+    g.font = '600 10px "Chakra Petch", sans-serif'; g.fillText('bend ' + left + ' link' + (left > 1 ? 's' : '') + ' to reopen', x + w / 2, y + 36);
+  }
+  g.textAlign = 'left';
+
+  // target preview
+  g.fillStyle = '#8f96ca'; g.font = '9px "Silkscreen", monospace'; g.textAlign = 'center';
+  g.fillText('TARGET', 835, 42);
+  glyph(g, 835, 62, 2.2, 'rgba(214,223,240,.6)', 2, 3, false);
+  for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(815 + i * 20, 84, 4, 0, 7); g.fillStyle = B.phase === 'bend' && i < B.done ? '#7cf29a' : '#2a3070'; g.fill(); }
+  g.textAlign = 'left';
+
+  // clip on the bench
+  if (B.phase === 'bend') {
+    const t = B.tab, sh = C.shape(B.f), col = B.special ? spCol(B.special) : STEEL;
+    const pr = (t.r - 0.45) * K;
+    g.beginPath(); g.arc(t.cx, t.cy, pr, 0, 7); g.fillStyle = '#7f89c4'; g.fill();
+    g.lineWidth = 3; g.strokeStyle = '#3b4392'; g.stroke();
+    g.beginPath(); g.arc(t.cx - pr * .25, t.cy - pr * .25, pr * .4, 0, 7); g.fillStyle = 'rgba(255,255,255,.18)'; g.fill();
+    wireStroke(g, (o) => { const off = o === -1 ? -1 : 0; for (let i = 0; i <= sh.n; i += 2) { const x = X(sh.xs[i]) + off, y = Y(sh.ys[i]) + off; i ? g.lineTo(x, y) : g.moveTo(x, y); } }, col, 5);
+    // guide path and handle
+    const f = B.f[t.i], k0 = Math.ceil(f * t.N);
+    g.setLineDash([2, 7]); g.lineWidth = 3; g.strokeStyle = 'rgba(53,224,255,.7)'; g.lineCap = 'round'; g.beginPath();
+    for (let k = k0; k <= t.N; k++) k === k0 ? g.moveTo(t.hx[k], t.hy[k]) : g.lineTo(t.hx[k], t.hy[k]);
+    g.stroke(); g.setLineDash([]);
+    const ex = t.hx[t.N], ey = t.hy[t.N], px = t.hx[t.N - 2], py = t.hy[t.N - 2], ang = Math.atan2(ey - py, ex - px);
+    g.save(); g.translate(ex, ey); g.rotate(ang); g.fillStyle = '#35e0ff'; g.beginPath(); g.moveTo(10, 0); g.lineTo(-6, -7); g.lineTo(-6, 7); g.fill(); g.restore();
+    const [hx, hy] = handleAt(f), pulse = B.drag ? 0 : 3 * Math.sin(now / 160);
+    g.beginPath(); g.arc(hx, hy, 15 + pulse, 0, 7); g.lineWidth = 3; g.strokeStyle = B.drag ? '#ffd60a' : '#35e0ff'; g.stroke();
+    g.beginPath(); g.arc(hx, hy, 5, 0, 7); g.fillStyle = B.drag ? '#ffd60a' : '#35e0ff'; g.fill();
+  }
+
+  // chain tray
+  g.fillStyle = '#080b27'; g.fillRect(0, BENCH_H + 6, BW, BH - BENCH_H - 6);
+  g.fillStyle = '#2b3072'; g.fillRect(0, BENCH_H + 6, BW, 3);
+  if (chain.slide > 0) chain.slide = Math.max(0, chain.slide - dt * 260);
+  const n = chain.shown;
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = Math.min(n, 14) - 1; i >= 0; i--) {
+      const idx = n - 1 - i, flat = idx % 2 === 0;
+      if ((pass === 0) === flat) continue;
+      const x = CHAIN_X - i * STEP + chain.slide;
+      if (flat) glyph(g, x, CHAIN_Y, CK, STEEL, 3, 3, true);
+      else {
+        g.lineCap = 'round'; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 11; g.beginPath(); g.moveTo(x - 26, CHAIN_Y); g.lineTo(x + 26, CHAIN_Y); g.stroke();
+        g.strokeStyle = '#8f9ac2'; g.lineWidth = 6; g.beginPath(); g.moveTo(x - 26, CHAIN_Y); g.lineTo(x + 26, CHAIN_Y); g.stroke();
+        g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x - 26, CHAIN_Y - 1.5); g.lineTo(x + 26, CHAIN_Y - 1.5); g.stroke();
+      }
+    }
+  }
+  const grd = g.createLinearGradient(0, 0, 160, 0); grd.addColorStop(0, '#080b27'); grd.addColorStop(1, 'rgba(8,11,39,0)');
+  g.fillStyle = grd; g.fillRect(0, BENCH_H + 9, 160, BH - BENCH_H - 9);
+  g.fillStyle = '#8f96ca'; g.font = '10px "Silkscreen", monospace'; g.fillText('THE CHAIN', 14, BENCH_H + 30);
+  if (S.gb.broken) { g.fillStyle = '#ff6b35'; g.fillText('GALLERY CLOSED: CHAIN SNAGGED', 330, BENCH_H + 30); }
+  g.fillStyle = '#e9ecff'; g.font = '700 13px "Chakra Petch", sans-serif'; g.fillText(fInt(S.clips) + ' links, 33 mm each', 100, BENCH_H + 30);
+
+  // flyers
+  for (let i = flyers.length - 1; i >= 0; i--) {
+    const f = flyers[i], u = Math.min(1, (now - f.t0) / f.dur), e2 = u * u * (3 - 2 * u);
+    if (f.special) {
+      const y = f.y0 - 120 * e2, k = K * (1 + 0.5 * e2);
+      g.globalAlpha = 1 - u * u; glyph(g, f.x0, y, k, f.col, 5, 2, true); g.globalAlpha = 1;
+    } else {
+      const x = f.x0 + (CHAIN_X + STEP - f.x0) * e2, y = f.y0 + (CHAIN_Y - f.y0) * e2, k = K + (CK - K) * e2;
+      glyph(g, x, y, k, f.col, 5 - 2 * e2, 2, true);
+    }
+    if (u >= 1) {
+      flyers.splice(i, 1);
+      if (!f.special) { chain.inflight = Math.max(0, chain.inflight - 1); chain.shown++; chain.slide = STEP; sfx.link(); burst(CHAIN_X, CHAIN_Y, '#d6dff0', 6, 70); }
+    }
+  }
+  // sparks
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const p = sparks[i]; p.t += dt; if (p.t >= p.life) { sparks.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 220 * dt;
+    g.globalAlpha = 1 - p.t / p.life; g.fillStyle = p.col; g.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+  }
+  g.globalAlpha = 1;
+}
+
+/* ================= FACTORY FLOOR ================= */
+const cvF = $('#factory');
+const FW = 1350, COLS = 9, CW = 150, CH = 110;
+let fRows = 2, gf = setup(cvF, FW, fRows * CH), fCells = [];
+const TIER_COL = ['#7cf29a', '#35e0ff', '#ffd60a', '#ff9f1c', '#ff6bd6', '#c77dff', '#4cc9ff', '#ff4d6d', '#2ee6d6', '#ffffff'];
+function gear(g, x, y, r, rot, col) {
+  g.save(); g.translate(x, y); g.rotate(rot); g.strokeStyle = col; g.lineWidth = 2;
+  g.beginPath(); g.arc(0, 0, r * 0.7, 0, 7); g.stroke();
+  for (let i = 0; i < 8; i++) { g.rotate(Math.PI / 4); g.fillStyle = col; g.fillRect(r * 0.62, -2, r * 0.38, 4); }
+  g.restore();
+}
+function belt(g, y, t, spd, col, n) {
+  g.fillStyle = '#1a1f62'; g.fillRect(8, y, CW - 16, 7);
+  g.strokeStyle = '#3a43a8'; g.lineWidth = 2;
+  for (let x = -((t * spd) % 14); x < CW; x += 14) { if (x > 8 && x < CW - 8) { g.beginPath(); g.moveTo(x, y + 1); g.lineTo(x, y + 6); g.stroke(); } }
+  const span = CW - 40;
+  for (let i = 0; i < n; i++) glyph(g, 20 + ((i * span / n + t * spd * 1.3) % span), y - 5, 0.8, col, 1.5, 4, false);
+}
+function person(g, x, y, t, spd, col) {
+  g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 3; g.lineCap = 'round';
+  g.beginPath(); g.arc(x, y - 22, 6, 0, 7); g.fill();
+  g.beginPath(); g.moveTo(x, y - 15); g.lineTo(x, y + 8); g.moveTo(x, y + 8); g.lineTo(x - 6, y + 24); g.moveTo(x, y + 8); g.lineTo(x + 6, y + 24); g.stroke();
+  const a = Math.sin(t * spd) * 7;
+  g.beginPath(); g.moveTo(x, y - 8); g.lineTo(x + 14, y - 2 + a); g.stroke();
+}
+function drawCell(g, cell, t) {
+  const col = cell.col;
+  g.fillStyle = '#0a0d2e'; g.fillRect(0, 0, CW, CH);
+  g.strokeStyle = col; g.globalAlpha = .55; g.lineWidth = 2; g.strokeRect(1, 1, CW - 2, CH - 2); g.globalAlpha = 1;
+  const sp = cell.spd;
+  if (cell.k === 'bench') {
+    person(g, 44, 56, t, 3, '#e9ecff'); g.fillStyle = '#1f2570'; g.fillRect(58, 56, 60, 8);
+    gear(g, 100, 42, 10, t * 0.5, '#8f96ca'); belt(g, 90, t, 10, STEEL, 2);
+  } else if (cell.k === 'hand') {
+    person(g, 40, 56, t + cell.i, 5, col); g.fillStyle = '#1f2570'; g.fillRect(54, 56, 70, 8);
+    for (let i = 0; i <= cell.i; i++) { g.beginPath(); g.arc(70 + i * 16, 50, 4, 0, 7); g.fillStyle = col; g.fill(); }
+    belt(g, 90, t, 14 + cell.i * 6, STEEL, 2 + cell.i);
+  } else {
+    const i = cell.i % 10;
+    g.fillStyle = '#161a56'; g.fillRect(22, 36, CW - 44, 42);
+    g.strokeStyle = col; g.lineWidth = 2; g.strokeRect(22, 36, CW - 44, 42);
+    if (i === 0) { g.beginPath(); g.moveTo(40, 70); g.lineTo(40 + Math.cos(t * 4) * 16, 46); g.lineWidth = 4; g.stroke(); gear(g, 100, 57, 14, t * 3, col); }
+    else if (i === 1) { gear(g, 52, 57, 15, -t * 2, col); g.strokeStyle = STEEL; g.lineWidth = 2; g.beginPath(); g.moveTo(66, 57); g.lineTo(CW - 22, 57); g.stroke(); }
+    else if (i === 2) { const y = 40 + 14 * Math.abs(Math.sin(t * 4)); g.fillStyle = col; g.fillRect(50, y, 18, 12); g.fillRect(84, 54 - (y - 40), 18, 12); }
+    else if (i === 3) { g.fillStyle = col; g.fillRect(22, 28, CW - 44, 8); for (let j = 0; j < 4; j++) gear(g, 42 + j * 24, 58, 9, t * (2 + j) * (j % 2 ? -1 : 1), col); }
+    else if (i === 4) { for (let j = 0; j < 6; j++) { g.fillStyle = Math.sin(t * 3 + j * 1.7) > 0 ? col : '#2a3070'; g.fillRect(30 + j * 17, 44, 10, 10); g.fillRect(30 + j * 17, 60, 10, 10); } }
+    else if (i === 5) { for (let j = 0; j < 2; j++) { g.fillStyle = '#2a3070'; g.fillRect(40 + j * 50, 20, 10, 18); g.globalAlpha = .5; g.fillStyle = '#8f96ca'; g.beginPath(); g.arc(45 + j * 50 + Math.sin(t + j) * 3, 18 - (t * 8 + j * 5) % 14, 5, 0, 7); g.fill(); g.globalAlpha = 1; } gear(g, 75, 62, 11, t * 2, col); }
+    else if (i === 6) { g.strokeStyle = col; g.lineWidth = 4; g.beginPath(); g.moveTo(40, 76); g.lineTo(60, 52 + Math.sin(t * 3) * 6); g.lineTo(82 + Math.cos(t * 3) * 8, 50); g.stroke(); gear(g, 108, 58, 12, t * 2.5, col); }
+    else if (i === 7) { for (let j = 0; j < 3; j++) { g.strokeStyle = col; g.lineWidth = 3; g.beginPath(); g.moveTo(40 + j * 32, 76); g.lineTo(40 + j * 32, 56 + Math.sin(t * 3 + j * 2) * 6); g.lineTo(52 + j * 32, 48 + Math.cos(t * 3 + j) * 6); g.stroke(); } }
+    else if (i === 8) { const x = ((t * 40) % (CW - 20)) - 10; g.fillStyle = col; g.fillRect(x, 50, 24, 14); g.fillRect(x + 26, 50, 24, 14); g.fillStyle = '#e9ecff'; g.fillRect(x - 10, 54, 10, 6); }
+    else { g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.arc(75, 150, 100, 4.2, 5.3); g.stroke(); const a = t * 0.8; g.fillStyle = col; g.fillRect(75 + Math.cos(a) * 28 - 6, 56 + Math.sin(a) * 10 - 3, 12, 6); }
+    belt(g, 92, t, sp, STEEL, cell.n > 8 ? 4 : cell.n > 2 ? 3 : 2);
+  }
+  g.fillStyle = '#e9ecff'; g.font = '600 11px "Chakra Petch", sans-serif'; g.textAlign = 'left'; g.fillText(cell.name, 8, 15);
+  if (cell.n) { g.fillStyle = '#ffd60a'; g.font = '10px "Silkscreen", monospace'; g.textAlign = 'right'; g.fillText('x' + cell.n, CW - 8, 15); g.textAlign = 'left'; }
+  if (cell.bd > 0.001) {
+    const pu = 0.5 + 0.5 * Math.sin(t * 6), can = S.cash >= cell.fix;
+    g.fillStyle = 'rgba(255,77,109,' + (0.16 + 0.1 * pu) + ')'; g.fillRect(0, 0, CW, CH);
+    g.strokeStyle = '#ff4d6d'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, CW - 3, CH - 3);
+    g.fillStyle = 'rgba(10,13,46,.82)'; g.fillRect(10, CH - 40, CW - 20, 32);
+    g.textAlign = 'center'; g.fillStyle = '#ff4d6d'; g.font = '10px "Silkscreen", monospace'; g.fillText('JAM ' + Math.round(cell.bd * 100) + '%', CW / 2, CH - 26);
+    g.fillStyle = can ? '#e9ecff' : '#8f96ca'; g.font = '600 11px "Chakra Petch", sans-serif'; g.fillText(C.crewDelay(S) < Infinity ? 'crew on the way, or click' : 'click to repair ' + fMoney(cell.fix), CW / 2, CH - 12);
+    g.textAlign = 'left';
+  }
+}
+function drawFactory(now) {
+  const nCells = 1 + S.hires + (S.hires >= 3 ? S.gens.filter(n => n > 0).length : 0);
+  const needRows = Math.max(2, Math.ceil(nCells / COLS));
+  if (needRows !== fRows) { fRows = needRows; gf = setup(cvF, FW, fRows * CH); }
+  const g = gf, t = now / 1000, FH = fRows * CH;
+  g.fillStyle = '#0c1036'; g.fillRect(0, 0, FW, FH);
+  const cells = [{ k: 'bench', name: 'Your bench', col: '#e9ecff', spd: 10 }];
+  for (let i = 0; i < S.hires; i++) cells.push({ k: 'hand', i, name: C.HIRES[i].name, col: '#7cf29a', spd: 14 });
+  if (S.hires >= 3) for (let i = 0; i < C.GENS.length; i++) if (S.gens[i] > 0) cells.push({ k: 'gen', i, n: S.gens[i], name: C.GENS[i].name, col: TIER_COL[i % TIER_COL.length], spd: 16 + (i % 10) * 5, bd: S.bd[i] || 0, fix: C.repairCost(S, i) });
+  const cols = COLS; fCells = cells;
+  cells.forEach((c, idx) => {
+    const x = (idx % cols) * CW, y = Math.floor(idx / cols) * CH;
+    g.save(); g.translate(x, y); g.beginPath(); g.rect(0, 0, CW, CH); g.clip(); drawCell(g, c, t); g.restore();
+  });
+  const used = Math.ceil(cells.length / cols) * CH;
+  if (used < FH) {
+    g.fillStyle = '#5b63a8'; g.font = '500 13px "Chakra Petch", sans-serif'; g.textAlign = 'left';
+    const msg = S.hires < 3 ? 'Hire three hands, then buy machines. Every machine you own appears here.' : 'New machines appear here as you buy them.';
+    g.fillText(msg, 12, used + 28);
+  }
+}
+
+/* ================= RULER ================= */
+const cvR = $('#ruler'), RW = 1300, RH = 66;
+const gr = setup(cvR, RW, RH);
+const LMIN = Math.log10(0.03), LMAX = Math.log10(3.2e22);
+const RX = (m) => 16 + (Math.log10(Math.max(m, 0.03)) - LMIN) / (LMAX - LMIN) * (RW - 32);
+function drawRuler() {
+  const g = gr; g.clearRect(0, 0, RW, RH);
+  g.strokeStyle = '#4650b0'; g.lineWidth = 2; g.beginPath(); g.moveTo(16, 34); g.lineTo(RW - 16, 34); g.stroke();
+  g.fillStyle = '#8f96ca'; g.font = '10px "Chakra Petch", sans-serif'; g.textAlign = 'center';
+  [[1, '1 m'], [1e3, '1 km'], [1e6, '1,000 km'], [1e9, '1 million km'], [1.496e11, '1 AU'], [1.5e13, '100 AU'], [9.4607e15, '1 light-year'], [9.4607e18, '1,000 ly'], [9.4607e21, '1 million ly']].forEach(([m, l]) => {
+    const x = RX(m); g.strokeStyle = '#2b3072'; g.beginPath(); g.moveTo(x, 34); g.lineTo(x, 42); g.stroke(); g.fillText(l, x, 54);
+  });
+  MS.forEach((m, i) => {
+    const x = RX(m.len), done = i < S.ms;
+    g.beginPath(); g.arc(x, 24, 5.5, 0, 7);
+    if (done) { g.fillStyle = m.col; g.fill(); } else { g.strokeStyle = m.col; g.lineWidth = 2; g.globalAlpha = .7; g.stroke(); g.globalAlpha = 1; }
+  });
+  const L = C.lengthM(S);
+  if (L > 0.03) { const x = RX(L); g.fillStyle = '#35e0ff'; g.beginPath(); g.moveTo(x, 36); g.lineTo(x - 6, 47); g.lineTo(x + 6, 47); g.fill(); g.fillText('you', x, 62); }
+  g.textAlign = 'left';
+}
+function factoryCellAt(e) { const r = cvF.getBoundingClientRect(), x = (e.clientX - r.left) * FW / r.width, y = (e.clientY - r.top) * (fRows * CH) / r.height; return fCells[Math.floor(y / CH) * COLS + Math.floor(x / CW)] || null; }
+cvF.addEventListener('pointerdown', (e) => { const c = factoryCellAt(e); if (c && c.k === 'gen' && S.bd[c.i] > 0) { if (C.repairTier(S, c.i)) sfx.buy(); else sfx.no(); } });
+cvF.addEventListener('pointermove', (e) => { const c = factoryCellAt(e); cvF.style.cursor = c && c.k === 'gen' && S.bd[c.i] > 0 ? 'pointer' : 'default'; });
+const rTip = $('#rTip');
+cvR.addEventListener('pointermove', (e) => {
+  const r = cvR.getBoundingClientRect(), x = (e.clientX - r.left) * RW / r.width;
+  let best = null, bd = 1e9;
+  MS.forEach(m => { const d = Math.abs(RX(m.len) - x); if (d < bd) { bd = d; best = m; } });
+  if (best && bd < 14) { rTip.textContent = best.short + ' · ' + fLen(best.len); rTip.style.left = (RX(best.len) * r.width / RW) + 'px'; rTip.style.top = '14px'; rTip.style.opacity = 1; }
+  else rTip.style.opacity = 0;
+});
+cvR.addEventListener('pointerleave', () => { rTip.style.opacity = 0; });
+
+/* ================= WALL ================= */
+const wallEl = $('#wall');
+let frameJustFramed = null;
+function frameSVG(col, dashed) {
+  let d = '';
+  for (let i = 0; i <= FIN.n; i += 4) d += (i ? 'L' : 'M') + (5 + (FIN.xs[i] - 12.5) * 3).toFixed(1) + ' ' + (5 - FIN.ys[i] * 3).toFixed(1);
+  return '<svg viewBox="0 0 110 37" aria-hidden="true"><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + (dashed ? 1.6 : 2.6) + '" stroke-linecap="round" stroke-linejoin="round"' + (dashed ? ' stroke-dasharray="2 4" opacity=".6"' : '') + '/></svg>';
+}
+const frameEls = [];
+function buildWall() {
+  wallEl.innerHTML = ''; frameEls.length = 0;
+  MS.forEach((m) => {
+    const el = document.createElement('div'); el.className = 'frame'; el.dataset.id = m.id;
+    el.innerHTML = '<div class="mat"></div><div class="nm"></div><div class="ln"></div>';
+    el.addEventListener('click', () => { if (el.classList.contains('pend') && B.phase === 'idle') startClip(m.id); });
+    wallEl.appendChild(el); frameEls.push({ el, state: '' });
+  });
+  updateWall(true);
+}
+function updateWall(force) {
+  MS.forEach((m, i) => {
+    const o = frameEls[i];
+    const st = S.framed.includes(m.id) ? 'done' : S.pending.includes(m.id) ? 'pend' : 'lock';
+    if (st === o.state && !force) return;
+    o.state = st; o.el.className = 'frame ' + (st === 'lock' ? '' : st);
+    o.el.setAttribute('role', st === 'pend' ? 'button' : 'img'); o.el.tabIndex = st === 'pend' ? 0 : -1;
+    o.el.querySelector('.mat').innerHTML = frameSVG(st === 'lock' ? '#6a72b8' : m.col, st === 'lock');
+    o.el.querySelector('.nm').textContent = m.short;
+    o.el.querySelector('.ln').textContent = st === 'pend' ? 'BEND IT' : fLen(m.len).toUpperCase();
+    o.el.setAttribute('aria-label', m.short + ', ' + fLen(m.len) + (st === 'pend' ? ', waiting to be bent' : st === 'done' ? ', framed' : ', not reached yet'));
+    if (st === 'done' && frameJustFramed === m.id) { o.el.classList.add('pop'); frameJustFramed = null; }
+  });
+  $('#wInfo').textContent = S.framed.length + ' / ' + MS.length + ' framed';
+}
+wallEl.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('pend')) { e.preventDefault(); e.target.click(); } });
+
+/* ================= TOASTS ================= */
+const toastsEl = $('#toasts');
+function toast(col, head, text, btn) {
+  const el = document.createElement('div'); el.className = 'toast'; el.style.setProperty('--c', col);
+  el.innerHTML = '<div class="t1"></div><div class="t2"></div>';
+  el.firstChild.textContent = head; el.lastChild.textContent = text;
+  if (btn) { const b = document.createElement('button'); b.className = 'btn gold'; b.type = 'button'; b.textContent = btn.label; b.onclick = () => { btn.fn(); el.remove(); }; el.appendChild(b); }
+  toastsEl.appendChild(el);
+  while (toastsEl.children.length > 3) toastsEl.firstChild.remove();
+  setTimeout(() => el.remove(), btn ? 9000 : 4500);
+}
+let lastJamToast = -1e9;
+function handleEvents() {
+  if (!S.events.length) return;
+  const ev = S.events.splice(0); S.events.length = 0;
+  for (const e of ev) {
+    if (e.type === 'jam') {
+      if (S.t - lastJamToast > 12) { lastJamToast = S.t; sfx.no(); toast('#ff4d6d', 'Machine jam', C.GENS[e.i].name + (C.crewDelay(S) < Infinity ? ' has jammed. Your crew is on it.' : ' has jammed. Click its cell on the factory floor to repair it.')); }
+    } else if (e.type === 'market') {
+      if (e.kind === 'shortage') toast('#ffb02e', 'Wire shortage', 'Wire prices are up for a couple of minutes.');
+      else if (e.kind === 'glut') toast('#7cf29a', 'Wire glut', 'Wire is cheap right now. Good time to stock up.');
+    } else if (e.type === 'galbreak') {
+      sfx.no(); toast('#ff6b35', 'Chain snagged', 'A visitor caught the chain. Bend ' + e.need + ' replacement link' + (e.need > 1 ? 's' : '') + ' at the bench to reopen the gallery.', { label: 'Repair now', fn: () => { if (B.phase === 'idle') startClip('repair'); } });
+    } else if (e.type === 'galfixed') {
+      toast('#7cf29a', 'Gallery reopened', e.auto ? 'The conservators mended the chain.' : 'Chain mended.');
+    } else if (e.type === 'order') {
+      sfx.win(); toast(e.ok ? '#7cf29a' : '#ff4d6d', e.ok ? 'Order delivered' : 'Order missed', e.ok ? fInt(e.n) + ' clips shipped. +' + fMoney(e.got) : 'You lost the ' + fMoney(e.lost) + ' deposit on ' + fInt(e.n) + ' clips.');
+    }
+  }
+  const ms = ev.filter(e => e.type === 'milestone').map(e => msById(e.id));
+  if (!ms.length) return;
+  sfx.win(); updateWall(false); drawRuler();
+  const lb = document.querySelector('.len-big');
+  if (lb.animate) lb.animate([{ transform: 'scale(1.12)' }, { transform: 'scale(1)' }], { duration: 400, easing: 'ease-out' });
+  const last = ms[ms.length - 1];
+  const btn = S.pending.includes(last.id) ? { label: 'Bend the milestone clip', fn: () => { if (B.phase === 'idle') startClip(last.id); } } : null;
+  if (ms.length === 1) toast(last.col, 'Milestone', 'Your chain is now as long as ' + last.name + ' (' + fLen(last.len) + '). +' + fMoney(last.reward), btn);
+  else toast(last.col, ms.length + ' milestones', ms[0].short + ' to ' + last.short + '. +' + fMoney(ms.reduce((a, m) => a + m.reward, 0)), btn);
+}
+
+/* ================= SHOP ================= */
+const TABS = [['staff', 'Staff'], ['supplies', 'Wire'], ['site', 'Site'], ['orders', 'Orders'], ['efficiency', 'Upgrades'], ['gallery', 'Gallery'], ['legacy', 'Legacy']];
+let tab = 'staff', qtyMode = '1', shopSig = '', shopCards = [], legArmed = -1e9;
+const tabsEl = $('#tabs'), shopEl = $('#shop');
+TABS.forEach(([id, label]) => {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'tab'; b.setAttribute('role', 'tab'); b.dataset.tab = id; b.textContent = label;
+  b.onclick = () => { tab = id; shopSig = ''; updateShop(); };
+  tabsEl.appendChild(b);
+});
+function mkCard(o) {
+  const el = document.createElement('div'); el.className = 'card';
+  el.innerHTML = '<div class="c-title"><span class="tt"></span><span class="n"></span></div><div class="c-desc"></div><div class="c-meta"></div><button class="btn" type="button"></button>';
+  const c = { el, tt: el.querySelector('.tt'), n: el.querySelector('.n'), desc: el.querySelector('.c-desc'), meta: el.querySelector('.c-meta'), btn: el.querySelector('.btn') };
+  c.tt.textContent = o.title; c.desc.textContent = o.desc; if (o.color) c.btn.classList.add(o.color);
+  c.btn.onclick = () => { if (o.buy()) { sfx.buy(); shopSig = ''; updateShop(); updateWall(false); } else sfx.no(); };
+  c.upd = o.upd; shopCards.push(c); return c;
+}
+function note(html) { const d = document.createElement('div'); d.className = 'note'; d.innerHTML = html; return d; }
+function setBtn(c, label, ok) { c.btn.textContent = label; c.btn.disabled = !ok; }
+function kvRows(rows) { return rows.map(([k, v]) => '<span>' + k + '</span><span>' + v + '</span>').join(''); }
+function live(fn, cls) { const d = document.createElement('div'); d.className = cls || 'kv'; let last = null; shopCards.push({ upd() { const h = fn(); if (h !== last) { last = h; d.innerHTML = h; } } }); return d; }
+function seg(opts, active, pick) {
+  const q = document.createElement('div'); q.className = 'qty';
+  opts.forEach(([v, l]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'mini'; b.textContent = l; b.setAttribute('aria-pressed', active === v); b.onclick = () => { pick(v); shopSig = ''; updateShop(); }; q.appendChild(b); });
+  return q;
+}
+function itemCards(group, color) { C.items(S).filter(it => it.group === group && it.show && !it.owned).forEach(it => shopEl.appendChild(mkCard({ title: it.name, desc: it.desc, color, buy: () => C.buyItem(S, it.id), upd(c) { setBtn(c, fMoney(it.cost), S.cash >= it.cost); } }).el)); }
+function siteCard(kind, color) {
+  const n = C.nextSite(S, kind); if (!n) return;
+  const extra = kind === 'pw' ? 'Supplies ' + fPow(n.cap) + '.' : kind === 'fl' ? 'Room for ' + fInt(n.cap) + ' bays.' : 'Stores ' + fInt(n.mult) + ' spools.';
+  shopEl.appendChild(mkCard({ title: n.name, desc: n.desc + ' ' + extra, color, buy: () => C.buySite(S, kind), upd(c) { setBtn(c, fMoney(n.cost), S.cash >= n.cost); } }).el);
+}
+function drawSpark(cv) {
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, h = S.mk.hist, lo = 0.35, hi = 2.6;
+  const Y = (p) => H - 7 - (Math.log(Math.max(lo, Math.min(hi, p))) - Math.log(lo)) / (Math.log(hi) - Math.log(lo)) * (H - 14);
+  g.clearRect(0, 0, W, H); g.fillStyle = '#0b0e30'; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(124,242,154,.10)'; g.fillRect(0, Y(0.85), W, H - Y(0.85));
+  g.fillStyle = 'rgba(255,77,109,.10)'; g.fillRect(0, 0, W, Y(1.2));
+  g.strokeStyle = '#2b3072'; g.lineWidth = 1; g.setLineDash([3, 4]);
+  [0.85, 1, 1.2].forEach(v => { g.beginPath(); g.moveTo(0, Y(v)); g.lineTo(W, Y(v)); g.stroke(); });
+  g.setLineDash([]); g.fillStyle = '#8f96ca'; g.font = '10px "Chakra Petch", sans-serif'; g.fillText('cheap', 6, H - 9); g.fillText('dear', 6, 12);
+  const col = S.mk.p <= 0.85 ? '#7cf29a' : S.mk.p <= 1.2 ? '#35e0ff' : '#ff6b6b';
+  g.strokeStyle = col; g.lineWidth = 2; g.lineJoin = 'round'; g.beginPath();
+  h.forEach((p, i) => { const x = 6 + i / Math.max(1, h.length - 1) * (W - 12); i ? g.lineTo(x, Y(p)) : g.moveTo(x, Y(p)); }); g.stroke();
+  const lx = 6 + (W - 12), ly = Y(h[h.length - 1]); g.fillStyle = col; g.beginPath(); g.arc(lx, ly, 4, 0, 7); g.fill();
+}
+const moodText = { queue: 'Queue round the block. You are charging too little.', quiet: 'Quiet halls. Tickets are too dear.', full: 'Busy and comfortable. About right.' };
+function buildShop() {
+  shopEl.innerHTML = ''; shopCards = [];
+  if (tab === 'staff') {
+    if (S.hires < 3) {
+      const h = C.HIRES[S.hires];
+      shopEl.appendChild(mkCard({ title: 'Hire: ' + h.name, desc: h.desc, color: 'lime', buy: () => C.buyHire(S),
+        upd(c) { setBtn(c, fMoney(h.cost), S.cash >= h.cost); c.n.textContent = (S.hires + 1) + ' of 3'; c.meta.textContent = S.hires < 2 ? 'Blank bin: ' + S.blanks + ' / ' + C.BIN : ''; } }).el);
+      shopEl.appendChild(note('Each hand takes over one more bend. Once all three are hired the bench runs itself and <b>machines</b> unlock here.'));
+    } else {
+      shopEl.appendChild(live(() => { const eff = C.powerEff(S); return kvRows([['Power', fPow(C.powerDemand(S)) + ' of ' + fPow(C.powerCap(S)) + (eff < 0.999 ? ' <b class="bad">brownout, output ×' + eff.toFixed(2) + '</b>' : '')], ['Floor space', fInt(C.spaceUsed(S)) + ' of ' + fInt(C.spaceCap(S)) + ' bays']]); }));
+      shopEl.appendChild(seg([['1', 'x1'], ['10', 'x10'], ['max', 'Max']], qtyMode, (v) => { qtyMode = v; }));
+      let top = 0; for (let i = 0; i < C.GENS.length; i++) if (S.gens[i] > 0) top = i + 1;
+      for (let i = 0; i <= Math.min(top, C.GENS.length - 1); i++) {
+        const g = C.GENS[i];
+        const qn = () => { const room = C.roomFor(S, i); return qtyMode === 'max' ? Math.max(1, C.genMax(S, i)) : Math.max(1, Math.min(+qtyMode, room)); };
+        shopEl.appendChild(mkCard({ title: g.name, desc: g.desc, color: 'lime',
+          buy: () => C.buyGen(S, i, qn()) > 0,
+          upd(c) { const room = C.roomFor(S, i), n = qn(), cost = C.genCost(S, i, n);
+            c.n.textContent = S.gens[i] ? 'x' + S.gens[i] : ''; c.meta.textContent = '+' + fRate(g.rate * C.rateMult(S)) + ' clips/s · ' + fPow(g.pw) + ' · ' + fInt(g.sp) + ' bay' + (g.sp > 1 ? 's' : '');
+            setBtn(c, room < 1 ? 'No space' : (n > 1 ? 'x' + n + ' ' : '') + fMoney(cost), room >= 1 && S.cash >= cost); } }).el);
+      }
+    }
+  } else if (tab === 'supplies') {
+    const sparkCv = document.createElement('canvas'); sparkCv.width = 480; sparkCv.height = 84; sparkCv.className = 'spark'; sparkCv.setAttribute('aria-label', 'Wire price history');
+    shopEl.appendChild(sparkCv); shopCards.push({ upd() { drawSpark(sparkCv); } });
+    shopEl.appendChild(live(() => {
+      const mk = S.mk, band = C.priceBand(S), ev = mk.kind === 'shortage' ? ', shortage' : mk.kind === 'glut' ? ', glut' : '';
+      const use = C.wireUse(S);
+      return kvRows([['Wire price', '<b class="' + (band === 'cheap' ? 'good' : band === 'dear' ? 'bad' : '') + '">×' + mk.p.toFixed(2) + ' (' + band + ev + ')</b>'], ['Per metre', '£' + C.ppm(S).toFixed(3)], ['Wire cost per clip', '£' + C.wireCostPerClip(S).toFixed(4)],
+        ['Store', fWire(S.wire) + ' of ' + fWire(C.wireCap(S))], ['Lasts', use <= 0 ? '-' : S.supplier ? 'the supplier tops it up' : fDur(S.wire / use) + ' at this output'], ['Restocking', S.supplier ? C.RULES[S.rule].name : 'by hand']]);
+    }));
+    const sp = C.SPOOLS[S.spool];
+    shopEl.appendChild(mkCard({ title: 'Buy a spool now', desc: 'One ' + fWire(sp.size) + ' spool into the store at today’s price.', color: 'cyan',
+      buy: () => C.buySpool(S), upd(c) { const pr = C.spoolSize(S) * C.ppm(S); c.meta.textContent = ''; setBtn(c, C.canBuySpool(S) ? fMoney(pr) : 'Store full', S.cash >= pr && C.canBuySpool(S)); } }).el);
+    shopEl.appendChild(mkCard({ title: 'Fill the store', desc: 'Buy as many spools as fit. Worth doing when the price is cheap.', color: 'cyan',
+      buy: () => C.fillWarehouse(S) > 0, upd(c) { const f = C.fillCost(S); c.meta.textContent = f.n ? f.n + ' spool' + (f.n > 1 ? 's' : '') : ''; setBtn(c, f.n ? fMoney(f.cost) : 'Full', f.n > 0 && S.cash >= f.cost / f.n); } }).el);
+    if (S.supplier) {
+      shopEl.appendChild(note('<b>Restocking rule.</b> ' + C.RULES[S.rule].desc));
+      shopEl.appendChild(seg(C.RULES.map((r, i) => [i, r.name]), S.rule, (v) => C.setRule(S, v)));
+    }
+    itemCards('supplies', 'lime'); siteCard('wh', 'amber');
+    if (S.hires < 1) shopEl.appendChild(note('A supplier account appears once you hire your first hand.'));
+  } else if (tab === 'site') {
+    shopEl.appendChild(live(() => {
+      const eff = C.powerEff(S), pd = C.powerDemand(S), pc = C.powerCap(S), jam = C.ownedTiers(S).filter(i => S.bd[i] > 0).length;
+      return kvRows([['Power', fPow(pd) + ' of ' + fPow(pc) + ' (' + Math.round(100 * pd / pc) + '%)'], ['Output', eff < 0.999 ? '<b class="bad">brownout ×' + eff.toFixed(2) + '</b>' : 'full'], ['Floor space', fInt(C.spaceUsed(S)) + ' of ' + fInt(C.spaceCap(S)) + ' bays'], ['Jammed lines', jam ? '<b class="bad">' + jam + '</b>' : 'none']]);
+    }));
+    shopEl.appendChild(note('Machines draw power and take floor space. Past the limit, output falls. <b>Jammed lines</b> stop until you click them on the factory floor, or a crew fixes them.'));
+    siteCard('pw', 'amber'); siteCard('fl', 'amber');
+    itemCards('maint', 'lime');
+  } else if (tab === 'orders') {
+    if (S.hires < 3) shopEl.appendChild(note('Customers start sending orders once the bench runs itself.'));
+    else {
+      shopEl.appendChild(mkCard({ title: 'Overtime', desc: 'Run flat out for ' + C.OT_LEN + ' s. Output ×' + C.OT_RATE + ', power draw ×' + C.OT_POWER + '. Then a ' + C.OT_CD + ' s cool-down.', color: 'amber',
+        buy: () => C.startOvertime(S), upd(c) { const on = S.ot.on > 0, cd = S.ot.cd > 0; c.meta.textContent = on ? 'Running, ' + Math.ceil(S.ot.on) + ' s left' : cd ? 'Cooling down, ' + Math.ceil(S.ot.cd) + ' s' : ''; setBtn(c, on ? 'On' : cd ? 'Wait' : 'Start', !on && !cd); } }).el);
+      S.ord.list.filter(o => o.st === 'run').forEach(o => {
+        const el = document.createElement('div'); el.className = 'card run';
+        el.innerHTML = '<div class="c-title"><span class="tt"></span><span class="n"></span></div><div class="c-desc"></div><div class="bar wide"><i></i></div>';
+        el.querySelector('.tt').textContent = 'In progress: ' + fInt(o.n) + ' clips';
+        shopEl.appendChild(el);
+        shopCards.push({ upd() { const q = S.ord.list.find(x => x.id === o.id); if (!q) return; el.querySelector('.n').textContent = Math.max(0, Math.ceil(q.left)) + ' s left'; el.querySelector('.c-desc').textContent = fInt(Math.min(q.made, q.n)) + ' of ' + fInt(q.n) + ' made. Pays ' + fMoney(q.pay) + ' plus an early bonus.'; el.querySelector('.bar i').style.width = Math.min(100, q.made / q.n * 100) + '%'; } });
+      });
+      const offers = S.ord.list.filter(o => o.st === 'offer');
+      offers.forEach(o => shopEl.appendChild(mkCard({ title: 'Order: ' + fInt(o.n) + ' clips in ' + o.T + ' s', desc: 'Pays ' + fMoney(o.pay) + ', up to 25% more if early. Deposit ' + fMoney(o.dep) + ' now, lost if you miss it.', color: 'lime',
+        buy: () => C.acceptOrder(S, o.id), upd(c) { const q = S.ord.list.find(x => x.id === o.id); c.meta.textContent = q ? 'Offer ends in ' + Math.max(0, Math.ceil(q.left)) + ' s' : ''; setBtn(c, 'Accept', S.cash >= o.dep && S.ord.list.filter(x => x.st === 'run').length < 2); } }).el));
+      if (!offers.length && !S.ord.list.some(o => o.st === 'run')) shopEl.appendChild(note('No orders right now. Offers show up every half minute or so. You can run two at a time.'));
+    }
+  } else if (tab === 'efficiency') {
+    const owned = C.MULTS.filter(u => C.has(S, u.id));
+    const chips = document.createElement('div'); chips.className = 'chips';
+    owned.forEach(u => { const s = document.createElement('span'); s.className = 'chip'; s.textContent = u.name + ' ×' + u.mult; chips.appendChild(s); });
+    if (owned.length) { shopEl.appendChild(note('All machines run at <b>×' + +(C.multAll(S).toFixed(2)) + '</b>.')); shopEl.appendChild(chips); }
+    const nxt = C.items(S).filter(it => it.group === 'efficiency' && it.show && !it.owned);
+    itemCards('efficiency', 'amber');
+    if (S.hires < 3) shopEl.appendChild(note('Upgrades for your machines unlock once all three hands are hired.'));
+    else if (!nxt.length && owned.length === C.MULTS.length) shopEl.appendChild(note('Everything is upgraded.'));
+  } else if (tab === 'gallery') {
+    if (!C.has(S, 'g0')) {
+      itemCards('gallery', 'pink');
+      if (S.ms < 4) shopEl.appendChild(note('The gallery opens up once the chain is as long as <b>a family car</b>. Until then you are paid for each milestone.'));
+    } else {
+      shopEl.appendChild(live(() => { const gs = C.galState(S); return kvRows([['Ticket price', fMoney(gs.p)], ['The hall', gs.broken ? '<b class="bad">closed, chain snagged</b>' : moodText[gs.mood]], ['Visitors', gs.broken ? '0' : fInt(gs.visitors * 60) + ' per minute'], ['Income', gs.broken ? '£0' : fMoney(gs.income) + ' per second']]); }));
+      const row = document.createElement('div'); row.className = 'qty';
+      [['-10%', 0.9], ['-2%', 0.98], ['+2%', 1.02], ['+10%', 1.1]].forEach(([l, f]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'mini'; b.textContent = l; b.onclick = () => { C.setTicket(S, C.galState(S).p * f); sfx.grab(); updateShop(); }; row.appendChild(b); });
+      shopEl.appendChild(row);
+      shopEl.appendChild(note('Charge what the hall will bear. A queue means you can charge more, empty halls mean you charge too much. The right price creeps up as the chain grows and you add attractions. Visitors sometimes snag the chain, and the gallery stays closed until you bend replacement links at the bench.'));
+      itemCards('gallery', 'pink');
+    }
+  } else {
+    const gain = C.legacyGain(S);
+    shopEl.appendChild(live(() => { const gn = C.legacyGain(S); return kvRows([['Legacy points', fInt(S.lp || 0)], ['Production bonus', '×' + C.legMult(S).toFixed(2) + ' machines and gallery'], ['New factories built', fInt(S.runs || 0)], ['Points if you rebuild now', gn >= 1 ? '<b class="good">+' + fInt(gn) + '</b>' : 'none yet']]); }));
+    if (!gain && !S.lp) shopEl.appendChild(note('Reach <b>1 billion clips</b> and you can build a new factory. You start again with nothing, but your wall of frames stays and you keep a permanent bonus that grows with how far you got.'));
+    else {
+      const c = mkCard({ title: 'Build a new factory', desc: 'Cash, machines, wire and upgrades reset. Your wall of frames and Legacy points stay, and the bonus makes the next run faster.', color: 'pink', buy: () => false, upd(c2) { const g2 = C.legacyGain(S), armed = performance.now() - legArmed < 4000; c2.meta.textContent = g2 >= 1 ? 'Bonus after: ×' + (1 + 0.08 * ((S.lp || 0) + g2)).toFixed(2) : ''; setBtn(c2, g2 < 1 ? 'Not yet' : armed ? 'Press again' : '+' + fInt(g2) + ' points', g2 >= 1); } });
+      c.btn.onclick = () => {
+        if (C.legacyGain(S) < 1) { sfx.no(); return; }
+        if (performance.now() - legArmed < 4000) { const g = C.prestige(S); legArmed = -1e9; resetUi(); sfx.win(); toast('#ff6bd6', 'New factory', '+' + fInt(g) + ' Legacy points. Production bonus is now ×' + C.legMult(S).toFixed(2) + '.'); }
+        else { legArmed = performance.now(); sfx.grab(); }
+      };
+      shopEl.appendChild(c.el);
+    }
+  }
+}
+function updateShop() {
+  const items = C.items(S).filter(it => it.show && !it.owned);
+  let top = 0; for (let i = 0; i < C.GENS.length; i++) if (S.gens[i] > 0) top = i + 1;
+  const sig = [tab, S.hires, qtyMode, S.supplier, S.spool, S.pw, S.fl, S.wh, S.rule, top, items.map(i => i.id).join(','), C.multAll(S), S.ord.list.map(o => o.id + o.st).join(','), S.gb.broken, S.lp, S.runs, S.ms >= 4].join('|');
+  if (sig !== shopSig) { shopSig = sig; buildShop(); }
+  shopCards.forEach(c => c.upd(c));
+  const jam = C.ownedTiers(S).some(i => S.bd[i] > 0);
+  tabsEl.querySelectorAll('.tab').forEach(b => {
+    const id = b.dataset.tab; b.setAttribute('aria-selected', id === tab);
+    let badge = 0;
+    const aff = (grp) => items.some(it => it.group === grp && S.cash >= it.cost);
+    if (id === 'staff') badge = S.hires < 3 ? S.cash >= C.HIRES[S.hires].cost : C.GENS.some((g, i) => i <= top && C.roomFor(S, i) >= 1 && S.cash >= C.genCost(S, i, 1));
+    else if (id === 'supplies') badge = aff('supplies');
+    else if (id === 'site') badge = jam ? 2 : (C.powerDemand(S) > C.powerCap(S) && S.cash >= (C.nextSite(S, 'pw') || { cost: Infinity }).cost) || aff('maint');
+    else if (id === 'orders') badge = S.ord.list.some(o => o.st === 'offer' && S.cash >= o.dep);
+    else if (id === 'efficiency') badge = aff('efficiency');
+    else if (id === 'gallery') badge = S.gb.broken ? 2 : aff('gallery') || (C.has(S, 'g0') && C.galState(S).mood !== 'full');
+    else if (id === 'legacy') badge = C.legacyGain(S) >= Math.max(5, (S.lp || 0) * 0.5);
+    b.dataset.badge = badge ? String(badge === true ? 1 : badge) : '0';
+  });
+}
+
+/* ================= HUD ================= */
+const el = (id) => document.getElementById(id);
+const bricksEl = el('bricks');
+for (let i = 0; i < 32; i++) bricksEl.appendChild(document.createElement('i'));
+let lastBricks = -1, lastCol = '';
+function updateHud() {
+  const L = C.lengthM(S), rate = C.genRate(S), inc = C.galIncome(S);
+  el('hCash').textContent = fMoney(S.cash);
+  el('hCashS').textContent = S.ms ? 'last milestone paid ' + fMoney(MS[S.ms - 1].reward) : 'paid out at each milestone';
+  el('hClips').textContent = fInt(S.clips);
+  const outR = C.outRate(S), eff = C.powerEff(S), jams = C.ownedTiers(S).filter(i => S.bd[i] > 0).length;
+  el('hRate').innerHTML = outR > 0 ? fRate(outR) + ' clips per second' + (S.ot.on > 0 ? ' · <b class="good">overtime</b>' : '') + (eff < 0.999 ? ' · <b class="bad">brownout</b>' : '') + (jams ? ' · <b class="bad">' + jams + ' jam' + (jams > 1 ? 's' : '') + '</b>' : '') : (S.hires ? 'blanks ' + S.blanks + ' / ' + C.BIN : 'by hand');
+  el('hWire').textContent = fWire(S.wire);
+  el('hWireBar').style.width = Math.min(100, S.wire / C.wireCap(S) * 100) + '%';
+  const band = C.priceBand(S); el('hWireS').innerHTML = 'price <b class="' + (band === 'cheap' ? 'good' : band === 'dear' ? 'bad' : '') + '">×' + S.mk.p.toFixed(2) + ' ' + band + '</b>';
+  const gs = C.galState(S);
+  el('hInc').textContent = !gs.open ? 'closed' : gs.broken ? 'snagged' : fMoney(gs.income) + '/s';
+  el('hIncS').innerHTML = !gs.open ? 'opens at a family car' : gs.broken ? '<b class="bad">repair the chain at the bench</b>' : 'ticket ' + fMoney(gs.p) + ' · <b class="' + (gs.mood === 'full' ? 'good' : 'warn') + '">' + (gs.mood === 'queue' ? 'queue, raise price' : gs.mood === 'quiet' ? 'quiet, lower price' : 'full house') + '</b>';
+  const lenTxt = fLen(L); el('lLen').textContent = lenTxt; el('lLen').style.fontSize = lenTxt.length > 14 ? 'clamp(18px, 2.4vw, 30px)' : lenTxt.length > 10 ? 'clamp(22px, 3vw, 38px)' : '';
+  el('lCmp').textContent = compare(L);
+  const kg = S.clips * C.CLIP_KG; el('lWt').innerHTML = S.clips ? 'Weighs <b>' + fMass(kg) + '</b> · ' + compareLadder(kg, WT_LADDER, 'heavy') : 'Weighs nothing yet';
+  const nx = MS[S.ms];
+  let on = 32, col = MS[MS.length - 1].col;
+  if (nx) {
+    const prev = S.ms ? MS[S.ms - 1].len : 0.03;
+    const p = Math.max(0, Math.min(1, (Math.log(Math.max(L, 0.03)) - Math.log(prev)) / (Math.log(nx.len) - Math.log(prev))));
+    on = Math.floor(p * 32); col = nx.col;
+    el('lNext').textContent = nx.name + ' (' + fLen(nx.len) + ')';
+    el('lLeft').textContent = fInt(Math.max(0, nx.clips - S.clips)) + ' clips to go';
+  } else { el('lNext').textContent = 'nothing left. You are past Andromeda'; el('lLeft').textContent = fRatio(L / MS[MS.length - 1].len) + ' Andromeda distances so far'; }
+  if (on !== lastBricks || col !== lastCol) { lastBricks = on; lastCol = col; bricksEl.style.setProperty('--c', col); [...bricksEl.children].forEach((b, i) => b.classList.toggle('on', i < on)); }
+  // bench status line
+  const bs = benchState(), idle = bs.idle, hasBlank = bs.hasBlank, noWire = bs.noWire, price = bs.price;
+  let hint;
+  if (B.phase === 'bend') {
+    const nm = B.special ? spName(B.special) + '. ' : '';
+    hint = nm + '<em>Bend ' + (B.bend + 1) + ' of 3.</em> Grab the glowing ring and swing it round the peg along the dotted path.';
+  } else if (S.gb.broken && idle) hint = '<em>Chain snagged.</em> The gallery is closed. Click the orange button on the bench and bend ' + (S.gb.need - S.gb.done) + ' replacement link' + (S.gb.need - S.gb.done > 1 ? 's' : '') + '.';
+  else if (S.pending.length && idle) hint = '<em>Milestone clip ready.</em> Click the gold button on the bench to bend it and hang it on the wall.';
+  else if (noWire) hint = 'Out of wire. Click the spool to buy more' + (S.cash < price ? ', or scrounge a little.' : '.');
+  else if (hasBlank) hint = S.blanks + ' blank' + (S.blanks > 1 ? 's' : '') + ' in the bin. Each needs <em>' + (3 - S.hires) + ' bend' + (3 - S.hires > 1 ? 's' : '') + '</em> from you.';
+  else if (S.hires >= 3) hint = 'The bench runs itself now. Click the scissors to bend one by hand if you fancy it.';
+  else if (!S.clips) hint = 'Click the <em>scissors</em> to cut a length of wire, then drag the glowing ring round each peg. Three bends make one clip.';
+  else hint = 'Click the scissors to cut the next length.';
+  if (el('bHint').dataset.h !== hint) { el('bHint').dataset.h = hint; el('bHint').innerHTML = hint; }
+  el('bBends').textContent = B.phase === 'bend' ? 'Bends ' + B.done + ' / 3' : 'Hand-bent clips ' + fInt(S.manual);
+  const parts = ['you']; if (S.hires) parts.push(S.hires + ' hand' + (S.hires > 1 ? 's' : ''));
+  const mach = S.gens.reduce((a, b) => a + b, 0); if (mach) parts.push(fInt(mach) + ' machines');
+  el('fInfo').textContent = parts.join(' + ') + (S.hires >= 3 ? '  ·  power ' + Math.round(100 * C.powerDemand(S) / C.powerCap(S)) + '%  ·  floor ' + Math.round(100 * C.spaceUsed(S) / C.spaceCap(S)) + '%' : '');
+  const m = Math.floor(S.t / 60); el('fPlay').textContent = 'Played ' + (m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min');
+  el('bMute').textContent = S.muted ? 'Sound off' : 'Sound on';
+}
+el('bMute').onclick = () => { S.muted = !S.muted; save(); updateHud(); };
+function resetUi() {
+  chain.shown = Math.floor(S.clips); chain.inflight = 0; flyers.length = 0;
+  B.phase = 'idle'; B.f = [0, 0, 0]; B.special = null; B.drag = null; B.tab = null; B.feedT = nowMs;
+  shopSig = ''; tab = 'staff'; buildWall(); updateWall(true); save(); drawRuler();
+}
+let resetArm = -1e9;
+el('bReset').onclick = (e) => {
+  if (performance.now() - resetArm < 3000) { S = C.newState(); resetUi(); e.target.textContent = 'Start over'; resetArm = -1e9; }
+  else { resetArm = performance.now(); e.target.textContent = 'Press again to wipe'; setTimeout(() => { if (performance.now() - resetArm >= 2900) e.target.textContent = 'Start over'; }, 3000); }
+};
+document.addEventListener('keydown', (e) => {
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if ((e.key === ' ' || e.key === 'c' || e.key === 'C') && e.target === document.body && canCutNow() && !S.pending.length) { e.preventDefault(); startClip(null); }
+});
+
+let warnAt = -1e9;
+function wireWarn() {
+  if (S.supplier || S.hires < 1 || S.t - warnAt < 45) return;
+  if (S.wire < C.WIRE * 1.5 && S.cash >= C.spoolPrice(S)) { warnAt = S.t; toast('#35e0ff', 'Low on wire', 'The workshop is about to stall. Buy a spool, or get a supplier account in the Wire tab.'); }
+}
+/* ================= STATISTICS ================= */
+const STAT_HERO = [['sWt', 'Chain weight'], ['sSpd', 'Growth speed'], ['sWire', 'Wire used'], ['sNext', 'Next milestone in']];
+const STAT_GROUPS = [
+  ['The chain', [['sLen', 'Length'], ['sEarth', 'Around the Earth'], ['sMoon', 'To the Moon'], ['sLight', 'Light crosses it in'], ['sClips', 'Clips this run']]],
+  ['The workshop', [['sManual', 'Hand-bent clips'], ['sStaff', 'Hands + machines'], ['sPeak', 'Peak machine output'], ['sPow', 'Power draw'], ['sKwh', 'Energy used'], ['sFloor', 'Floor space used']]],
+  ['The money', [['sEarn', 'Total earned'], ['sMil', 'From milestones'], ['sOrd', 'From orders'], ['sGal', 'From the gallery'], ['sWsp', 'Spent on wire']]],
+  ['History', [['sJam', 'Machine jams'], ['sSnag', 'Gallery snags'], ['sOrdN', 'Orders done / failed'], ['sFrames', 'Frames on the wall'], ['sLife', 'Clips, all factories'], ['sTime', 'Time played']]],
+];
+(function buildStats() {
+  let s = '<div class="shero">';
+  for (const [id, k] of STAT_HERO) s += '<div class="hero"><div class="k">' + k + '</div><div class="v" id="' + id + '">-</div><div class="s" id="' + id + 'S"></div></div>';
+  s += '</div><div class="sgroups">';
+  for (const [t, rows] of STAT_GROUPS) { s += '<div class="sgroup"><h3>' + t + '</h3><div class="kv">'; for (const [id, k] of rows) s += '<span>' + k + '</span><span id="' + id + '">-</span>'; s += '</div></div>'; }
+  el('statBody').innerHTML = s + '</div>';
+})();
+const spdSamples = [];
+function updateStats() {
+  const L = C.lengthM(S), kg = S.clips * C.CLIP_KG, st = S.st, put = (id, v) => { const n = el(id); if (n.textContent !== v) n.textContent = v; };
+  // growth speed: measured over the last ~10 seconds so it works for hand-bending too
+  if (spdSamples.length && S.clips < spdSamples[spdSamples.length - 1].c) spdSamples.length = 0;
+  spdSamples.push({ t: S.t, c: S.clips }); while (spdSamples.length > 2 && S.t - spdSamples[0].t > 10) spdSamples.shift();
+  const a = spdSamples[0], b = spdSamples[spdSamples.length - 1];
+  const rate = b.t > a.t ? (b.c - a.c) / (b.t - a.t) : 0, spd = rate * C.CLIP_LEN;
+  put('sWt', fMass(kg)); put('sWtS', S.clips ? compareLadder(kg, WT_LADDER, 'heavy') : 'Nothing yet');
+  put('sSpd', fSpeed(spd)); put('sSpdS', spd > 0 ? (spd >= 299792458 ? fRatio(spd / 299792458) + '× the speed of light' : compareLadder(spd, SPD_LADDER, 'fast')) : 'Standing still');
+  const wireM = S.clips * C.WIRE; put('sWire', fWire(wireM)); put('sWireS', S.clips ? 'bought for ' + fMoney(S.wspent) + ' this run' : 'Nothing yet');
+  const nx = MS[S.ms], r = C.outRate(S);
+  if (nx) { put('sNext', r > 0 ? fSpan((nx.clips - S.clips) / r) : 'not producing'); put('sNextS', nx.name); }
+  else { put('sNext', 'all done'); put('sNextS', 'every milestone reached'); }
+  put('sLen', fLen(L)); put('sEarth', fPct(L / 4.0075e7)); put('sMoon', fPct(L / 3.844e8));
+  put('sLight', L >= 1 ? fSpan(L / 299792458) : '-'); put('sClips', fInt(S.clips));
+  put('sManual', fInt(S.manual)); put('sStaff', S.hires + ' + ' + fInt(S.gens.reduce((x, y) => x + y, 0)));
+  put('sPeak', st.peak > 0 ? fRate(st.peak) + '/s' : '-'); put('sPow', fPow(C.powerDemand(S))); put('sKwh', fEnergy(st.kwh));
+  put('sFloor', S.hires >= 3 ? Math.round(100 * C.spaceUsed(S) / C.spaceCap(S)) + '%' : '-');
+  put('sEarn', fMoney(st.mil + st.ord + st.gal)); put('sMil', fMoney(st.mil)); put('sOrd', fMoney(st.ord)); put('sGal', fMoney(st.gal)); put('sWsp', fMoney(S.wspent));
+  put('sJam', fInt(st.jams)); put('sSnag', fInt(st.snags)); put('sOrdN', st.ordN + ' / ' + st.ordX);
+  put('sFrames', S.framed.length + ' / ' + MS.length); put('sLife', fInt(S.life.clips + S.clips)); put('sTime', fPlayTime(S.life.t + S.t));
+  put('sInfo', 'Factory ' + ((S.runs || 0) + 1));
+}
+/* ================= MAIN LOOP ================= */
+let last = performance.now(), hudT = 0, shopT = 0, rulerT = 0, saveT = 0, statT = 0;
+function frame(t) {
+  nowMs = t;
+  const dt = Math.min(0.25, Math.max(0, (t - last) / 1000)); last = t;
+  C.tick(S, dt);
+  // keep the chain strip in step with auto production
+  const target = Math.floor(S.clips) - chain.inflight;
+  if (chain.shown < target) { const d = target - chain.shown; chain.shown = target; if (d <= 3) chain.slide = Math.max(chain.slide, STEP * 0.6); }
+  handleEvents();
+  if (B.phase === 'idle' && S.hires < 3 && S.blanks >= 1 && !S.pending.length && !S.gb.broken && nowMs - B.feedT > 450) startClip(null);
+  drawBench(dt); drawFactory(t);
+  hudT += dt; shopT += dt; rulerT += dt; saveT += dt; statT += dt;
+  if (hudT > 0.1) { hudT = 0; updateHud(); wireWarn(); }
+  if (shopT > 0.25) { shopT = 0; updateShop(); }
+  if (statT > 0.5) { statT = 0; updateStats(); }
+  if (rulerT > 0.5) { rulerT = 0; drawRuler(); }
+  if (saveT > 5) { saveT = 0; save(); }
+  requestAnimationFrame(frame);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); else last = performance.now(); });
+window.addEventListener('pagehide', save);
+buildWall(); updateHud(); updateShop(); updateStats(); drawRuler();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
